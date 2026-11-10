@@ -1,0 +1,27 @@
+       Wewala Super Store       
+  123 Main Street, Wewala, Sri  
+             Lanka              
+        Tel: 0112345678         
+    VAT Reg: 123456789-7000     
+--------------------------------
+Bill No:       WWL-20261110-0010
+Date:        2026-11-10 16:15:00
+Cashier:            Kasun Perera
+Customer: Nimal Silva
+(077****567)
+--------------------------------
+Item         Qty x Price   Total
+Anchor Milk Powder 400g Box
+  1 pack x Rs. 480.00 Rs. 480.00
+--------------------------------
+Subtotal              Rs. 480.00
+Tax (0% incl.)          Rs. 0.00
+TOTAL                 Rs. 480.00
+  CASH                Rs. 500.00
+Paid                  Rs. 500.00
+Change                 Rs. 20.00
+--------------------------------
+ Goods returnable within 7 days 
+     with original receipt.     
+  Thank you, please come again  
+      *WWL-20261110-0010*       

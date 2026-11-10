@@ -1,0 +1,27 @@
+            Wewala Super Store            
+    123 Main Street, Wewala, Sri Lanka    
+             Tel: 0112345678              
+         VAT Reg: 123456789-7000          
+------------------------------------------
+Bill No:                 WWL-20261110-0007
+Date:                  2026-11-10 15:30:00
+Cashier:                      Kasun Perera
+Customer: Nimal Silva (077****567)
+------------------------------------------
+Item                  Qty x Price    Total
+Fresh Farm Eggs 10pk (Tax Exempt)
+  1 pack x Rs. 500.00           Rs. 500.00
+Herbal Shampoo Bottle 200ml
+  1 pcs x Rs. 1,000.00        Rs. 1,180.00
+------------------------------------------
+Subtotal                      Rs. 1,500.00
+Tax (18% excl.)                 Rs. 180.00
+TOTAL                         Rs. 1,680.00
+  CASH                        Rs. 2,000.00
+Paid                          Rs. 2,000.00
+Change                          Rs. 320.00
+------------------------------------------
+   Goods returnable within 7 days with    
+            original receipt.             
+       Thank you, please come again       
+           *WWL-20261110-0007*            

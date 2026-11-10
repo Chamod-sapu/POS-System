@@ -1,0 +1,25 @@
+            Wewala Super Store            
+    123 Main Street, Wewala, Sri Lanka    
+             Tel: 0112345678              
+         VAT Reg: 123456789-7000          
+------------------------------------------
+Bill No:                 WWL-20261110-0005
+Date:                  2026-11-10 15:00:00
+Cashier:                      Kasun Perera
+Customer: Nimal Silva (077****567)
+------------------------------------------
+Item                  Qty x Price    Total
+Stainless Steel Electric Kettle 1.8L
+  1 pcs x Rs. 5,900.00        Rs. 5,900.00
+------------------------------------------
+Subtotal                      Rs. 5,900.00
+Tax (18% incl.)                 Rs. 900.00
+TOTAL                         Rs. 5,900.00
+  CARD (VISA-4421)            Rs. 5,900.00
+Paid                          Rs. 5,900.00
+Change                            Rs. 0.00
+------------------------------------------
+   Goods returnable within 7 days with    
+            original receipt.             
+       Thank you, please come again       
+           *WWL-20261110-0005*            

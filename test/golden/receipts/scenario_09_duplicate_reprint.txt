@@ -1,0 +1,27 @@
+          *** DUPLICATE COPY ***          
+            Wewala Super Store            
+    123 Main Street, Wewala, Sri Lanka    
+             Tel: 0112345678              
+         VAT Reg: 123456789-7000          
+------------------------------------------
+Bill No:                 WWL-20261110-0009
+Date:                  2026-11-10 16:00:00
+Cashier:                      Kasun Perera
+Customer: Nimal Silva (077****567)
+------------------------------------------
+Item                  Qty x Price    Total
+Sunlight Soap Bar 100g
+  2 pcs x Rs. 150.00            Rs. 300.00
+------------------------------------------
+Subtotal                        Rs. 300.00
+Tax (0% incl.)                    Rs. 0.00
+TOTAL                           Rs. 300.00
+  CASH                          Rs. 300.00
+Paid                            Rs. 300.00
+Change                            Rs. 0.00
+------------------------------------------
+   Goods returnable within 7 days with    
+            original receipt.             
+       Thank you, please come again       
+           *WWL-20261110-0009*            
+          *** DUPLICATE COPY ***          

@@ -1,0 +1,25 @@
+            Wewala Super Store            
+    123 Main Street, Wewala, Sri Lanka    
+             Tel: 0112345678              
+         VAT Reg: 123456789-7000          
+------------------------------------------
+Bill No:                 WWL-20261110-0006
+Date:                  2026-11-10 15:15:00
+Cashier:                      Kasun Perera
+Customer: Nimal Silva (077****567)
+------------------------------------------
+Item                  Qty x Price    Total
+Rotary Hammer Drill Kit 800W
+  1 pcs x Rs. 10,000.00      Rs. 11,800.00
+------------------------------------------
+Subtotal                     Rs. 10,000.00
+Tax (18% excl.)               Rs. 1,800.00
+TOTAL                        Rs. 11,800.00
+  BANK TRANSFER (HNB-TRF-091 Rs. 11,800.00
+Paid                         Rs. 11,800.00
+Change                            Rs. 0.00
+------------------------------------------
+   Goods returnable within 7 days with    
+            original receipt.             
+       Thank you, please come again       
+           *WWL-20261110-0006*            

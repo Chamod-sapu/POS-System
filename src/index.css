@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter Variable', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+  --bg-canvas: #f8fafc;
+  --bg-card: #ffffff;
+  --border-card: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg-canvas: #090d16;
+  --bg-card: #0f172a;
+  --border-card: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular figures across financial numbers and counters */
+.tabular-nums,
+[data-tabular="true"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Accessible minimum tap targets for touch displays in comfortable mode */
+button,
+[role="button"],
+input,
+select {
+  min-height: 44px;
+}
+
+/* High-contrast accessible focus ring */
+:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+/* Compact density mode override for mouse / desktop workflows */
+[data-density="compact"] button,
+[data-density="compact"] [role="button"],
+[data-density="compact"] input,
+[data-density="compact"] select {
+  min-height: 36px;
+}
+
+[data-density="compact"] .table-row-compact {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+/* Realistic paper receipt styling with zig-zag edge in browser preview */
+.receipt-paper {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  position: relative;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.receipt-paper::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: radial-gradient(circle, transparent, transparent 50%, #ffffff 50%, #ffffff 100%);
+  background-size: 12px 12px;
+}
+
+/* Smooth micro-interaction transitions */
+.transition-subtle {
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Soft highlight on recently added item */
+@keyframes itemHighlight {
+  0% {
+    background-color: rgba(20, 184, 166, 0.25);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-highlight {
+  animation: itemHighlight 800ms ease-out forwards;
+}
+
+/* Soft flash on stock change */
+@keyframes stockPulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-stock-flash {
+  animation: stockPulse 400ms ease-out;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* PRINT FOUNDATION                                                           */
+/* Ensures thermal slips and A4 invoices are byte-for-byte crisp and pristine */
+/* -------------------------------------------------------------------------- */
+@media print {
+
+  /* Hide application chrome */
+  header,
+  aside,
+  nav,
+  footer,
+  .no-print,
+  [data-app-chrome="true"],
+  [role="dialog"],
+  [aria-modal="true"],
+  .toast-container,
+  button:not(.print-include) {
+    display: none !important;
+  }
+
+  /* Reset layout constraints for clean paper output */
+  body,
+  #root,
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: transparent !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure printed tables and text render crisp */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 5mm;
+  }
+}

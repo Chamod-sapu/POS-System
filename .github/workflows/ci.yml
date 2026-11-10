@@ -1,0 +1,88 @@
+name: CI & Accuracy Verification Suite
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality-and-security:
+    name: Quality, Security & Automated Testing
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: postgres
+        ports:
+          - 54322:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      VITE_SUPABASE_URL: http://127.0.0.1:54321
+      VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock.anon.key
+      DATABASE_URL: postgresql://postgres:postgrespassword@127.0.0.1:54322/postgres
+      CI: 'true'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: 1. Secrets Leakage Guard
+        run: npm run check:secrets
+
+      - name: 2. XSS Strict Scanning
+        run: npm run check:xss
+
+      - name: 3. TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: 4. Linter Analysis
+        run: npm run lint
+
+      - name: 5. Unit, Property-Based & Golden Snapshot Tests
+        run: npm test
+
+      - name: 6. Multi-Client Concurrency Stress Verification
+        run: npm run test:concurrency
+
+      - name: 7. Apply Migrations to Isolated Test DB
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "Applying migration: $f"
+            PGPASSWORD=postgrespassword psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f "$f"
+          done
+
+      - name: 8. Execute Database Security & Integrity Tests
+        run: |
+          PGPASSWORD=postgrespassword psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/tests/security_audit.sql
+          PGPASSWORD=postgrespassword psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/tests/006_create_sale_tests.sql
+          PGPASSWORD=postgrespassword psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/tests/rls.sql
+          PGPASSWORD=postgrespassword psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/tests/property_based_quote_sale.sql
+
+      - name: 9. Install Playwright Browsers (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: 10. Playwright E2E Integration Suite (Headless)
+        run: npx playwright test
+
+      - name: 11. Production Bundle Build
+        run: npm run build
+

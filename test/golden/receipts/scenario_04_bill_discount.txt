@@ -1,0 +1,28 @@
+            Wewala Super Store            
+    123 Main Street, Wewala, Sri Lanka    
+             Tel: 0112345678              
+         VAT Reg: 123456789-7000          
+------------------------------------------
+Bill No:                 WWL-20261110-0004
+Date:                  2026-11-10 14:50:00
+Cashier:                      Kasun Perera
+Customer: Nimal Silva (077****567)
+------------------------------------------
+Item                  Qty x Price    Total
+Dilmah Ceylon Tea 400g
+  1 box x Rs. 1,200.00        Rs. 1,140.00
+White Sugar 1kg
+  6 kg x Rs. 300.00           Rs. 1,710.00
+------------------------------------------
+Subtotal                      Rs. 3,000.00
+Bill Discount                  -Rs. 150.00
+Tax (0% incl.)                    Rs. 0.00
+TOTAL                         Rs. 2,850.00
+  CASH                        Rs. 3,000.00
+Paid                          Rs. 3,000.00
+Change                          Rs. 150.00
+------------------------------------------
+   Goods returnable within 7 days with    
+            original receipt.             
+       Thank you, please come again       
+           *WWL-20261110-0004*            

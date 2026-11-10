@@ -1,0 +1,27 @@
+            Wewala Super Store            
+    123 Main Street, Wewala, Sri Lanka    
+             Tel: 0112345678              
+         VAT Reg: 123456789-7000          
+------------------------------------------
+Bill No:                 WWL-20261110-0003
+Date:                  2026-11-10 14:45:10
+Cashier:                      Kasun Perera
+Customer: Nimal Silva (077****567)
+------------------------------------------
+Item                  Qty x Price    Total
+Anchor Salted Butter 200g
+  2 pack x Rs. 850.00         Rs. 1,530.00
+  Discount:                    -Rs. 170.00
+------------------------------------------
+Subtotal                      Rs. 1,700.00
+Item Discounts                 -Rs. 170.00
+Tax (0% incl.)                    Rs. 0.00
+TOTAL                         Rs. 1,530.00
+  CARD (AUTH-9988)            Rs. 1,530.00
+Paid                          Rs. 1,530.00
+Change                            Rs. 0.00
+------------------------------------------
+   Goods returnable within 7 days with    
+            original receipt.             
+       Thank you, please come again       
+           *WWL-20261110-0003*            
