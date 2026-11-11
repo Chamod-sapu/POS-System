@@ -274,9 +274,9 @@ export async function toggleProductActive(id: string, isActive: boolean): Promis
  * Fetch immutable stock history movements for a product
  */
 export async function fetchStockHistory(productId: string): Promise<StockMovementWithStaff[]> {
-  const { data, error } = await supabase
+  const { data: movements, error } = await supabase
     .from('stock_movements')
-    .select('*, profile:profiles(full_name)')
+    .select('*')
     .eq('product_id', productId)
     .order('created_at', { ascending: false });
 
@@ -284,13 +284,37 @@ export async function fetchStockHistory(productId: string): Promise<StockMovemen
     throw new Error(error.message);
   }
 
-  type MovementWithProfile = StockMovement & {
-    profile?: { full_name: string | null } | null;
-  };
+  if (!movements || movements.length === 0) {
+    return [];
+  }
 
-  return ((data || []) as unknown as MovementWithProfile[]).map((m) => ({
+  const userIds = Array.from(
+    new Set(
+      movements
+        .map((m) => m.created_by)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    )
+  );
+  let profilesMap = new Map<string, string>();
+
+  if (userIds.length > 0) {
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+
+      if (profiles) {
+        profilesMap = new Map(profiles.map((p) => [p.id, p.full_name]));
+      }
+    } catch {
+      // Graceful fallback if profiles query is restricted
+    }
+  }
+
+  return movements.map((m) => ({
     ...m,
-    staff_name: m.profile?.full_name || 'System / Staff',
+    staff_name: (m.created_by && profilesMap.get(m.created_by)) || 'System / Staff',
   }));
 }
 

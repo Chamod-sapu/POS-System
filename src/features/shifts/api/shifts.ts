@@ -211,23 +211,45 @@ export async function recordCashMovement(
  * Fetches shift history with cashier details for the Shifts ledger.
  */
 export async function fetchShifts(): Promise<ShiftWithCashier[]> {
-  const { data, error } = await supabase
+  const { data: shifts, error: shiftsError } = await supabase
     .from('shifts')
-    .select(`
-      *,
-      profiles:cashier_id (
-        full_name
-      )
-    `)
+    .select('*')
     .order('opened_at', { ascending: false })
     .limit(50);
 
-  if (error) {
-    console.error('Failed to fetch shifts ledger:', error);
-    throw new Error(error.message);
+  if (shiftsError) {
+    console.error('Failed to fetch shifts ledger:', shiftsError);
+    throw new Error(shiftsError.message);
   }
 
-  return (data || []) as ShiftWithCashier[];
+  if (!shifts || shifts.length === 0) {
+    return [];
+  }
+
+  const cashierIds = Array.from(new Set(shifts.map((s) => s.cashier_id).filter(Boolean)));
+
+  let profilesMap = new Map<string, string>();
+  if (cashierIds.length > 0) {
+    try {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', cashierIds);
+
+      if (!profilesError && profiles) {
+        profilesMap = new Map(profiles.map((p) => [p.id, p.full_name]));
+      }
+    } catch (err) {
+      console.warn('Could not load cashier profile names for shifts ledger:', err);
+    }
+  }
+
+  return shifts.map((shift) => ({
+    ...shift,
+    profiles: {
+      full_name: profilesMap.get(shift.cashier_id) || null,
+    },
+  }));
 }
 
 /**
