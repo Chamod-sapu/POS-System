@@ -62,39 +62,16 @@ export async function verifyCurrentPassword(email: string, password: string): Pr
   return !error;
 }
 
-let edgeFunctionAvailable: boolean | null = null;
-
 /**
- * Returns whether the admin-manage-staff Edge Function is available
- */
-export function isStaffEdgeFunctionAvailable(): boolean | null {
-  return edgeFunctionAvailable;
-}
-
-/**
- * Invoke owner-only admin-manage-staff Edge Function
+ * Invoke owner-only admin-manage-staff Edge Function for privileged auth admin actions (create_user, reset_password)
  */
 async function invokeStaffFunction<T>(payload: Record<string, unknown>): Promise<T> {
-  if (edgeFunctionAvailable === false) {
-    throw new Error('EDGE_FUNCTION_NOT_DEPLOYED');
-  }
-
   try {
     const { data, error } = await supabase.functions.invoke('admin-manage-staff', {
       body: payload,
     });
 
     if (error) {
-      const msg = error.message || '';
-      if (
-        msg.includes('Failed to send a request') ||
-        msg.includes('404') ||
-        msg.includes('FunctionsFetchError') ||
-        msg.includes('ERR_FAILED')
-      ) {
-        edgeFunctionAvailable = false;
-        throw new Error('EDGE_FUNCTION_NOT_DEPLOYED');
-      }
       throw new Error(error.message || 'Edge function invocation failed');
     }
 
@@ -103,7 +80,6 @@ async function invokeStaffFunction<T>(payload: Record<string, unknown>): Promise
       throw new Error(errorData.message || errorData.error);
     }
 
-    edgeFunctionAvailable = true;
     return data as T;
   } catch (err: unknown) {
     const errMsg = (err instanceof Error ? err.message : String(err)) || '';
@@ -112,56 +88,10 @@ async function invokeStaffFunction<T>(payload: Record<string, unknown>): Promise
       errMsg.includes('404') ||
       errMsg.includes('FunctionsFetchError') ||
       errMsg.includes('CORS') ||
-      errMsg.includes('ERR_FAILED') ||
-      errMsg.includes('EDGE_FUNCTION_NOT_DEPLOYED')
+      errMsg.includes('ERR_FAILED')
     ) {
-      edgeFunctionAvailable = false;
-      throw new Error('EDGE_FUNCTION_NOT_DEPLOYED');
-    }
-    throw err;
-  }
-}
-
-/**
- * List all staff members (with emails) - owner only
- */
-export async function listStaff(): Promise<StaffMember[]> {
-  try {
-    const res = await invokeStaffFunction<{ success: boolean; staff: StaffMember[] }>({
-      action: 'list_staff',
-    });
-    return res.staff || [];
-  } catch {
-    edgeFunctionAvailable = false;
-    // Fallback: If edge function is not deployed yet in local dev, query profiles directly (RLS allows owners to select all)
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return ((data || []) as Profile[]).map((p: Profile) => ({ ...p, email: null }));
-  }
-}
-
-/**
- * Create a new staff user - owner only
- */
-export async function createStaffMember(input: CreateStaffInput): Promise<StaffMember> {
-  try {
-    const res = await invokeStaffFunction<{ success: boolean; user: StaffMember }>({
-      action: 'create_user',
-      ...input,
-    });
-    return res.user;
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : '';
-    if (errMsg === 'EDGE_FUNCTION_NOT_DEPLOYED' || edgeFunctionAvailable === false) {
       throw new Error(
-        "The 'admin-manage-staff' Edge Function is not deployed to your Supabase project. Creating new auth users requires deploying the edge function: npx supabase functions deploy admin-manage-staff"
+        "The 'admin-manage-staff' Edge Function is not deployed to your Supabase project. Deploy it using: npx supabase functions deploy admin-manage-staff"
       );
     }
     throw err;
@@ -169,107 +99,106 @@ export async function createStaffMember(input: CreateStaffInput): Promise<StaffM
 }
 
 /**
- * Update staff role - owner only
+ * List all staff members - owner only.
+ * Reads directly from profiles table with PostgreSQL RLS enforcement (no Edge Function required).
+ */
+export async function listStaff(): Promise<StaffMember[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Failed to list staff:', error);
+    throw new Error(error.message);
+  }
+
+  // Get current user session to enrich own email if available
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return ((data || []) as Profile[]).map((p: Profile) => ({
+    ...p,
+    email: user && user.id === p.id ? user.email || null : null,
+  }));
+}
+
+/**
+ * Create a new staff user - owner only.
+ * Requires the admin-manage-staff Edge Function with elevated privileges.
+ */
+export async function createStaffMember(input: CreateStaffInput): Promise<StaffMember> {
+  const res = await invokeStaffFunction<{ success: boolean; user: StaffMember }>({
+    action: 'create_user',
+    ...input,
+  });
+  return res.user;
+}
+
+/**
+ * Update staff role - owner only.
+ * Directly updates profiles table with PostgreSQL RLS enforcement.
  */
 export async function updateStaffRole(input: SetRoleInput): Promise<void> {
-  try {
-    await invokeStaffFunction<{ success: boolean }>({
-      action: 'set_role',
-      ...input,
-    });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : '';
-    if (errMsg === 'EDGE_FUNCTION_NOT_DEPLOYED' || edgeFunctionAvailable === false) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: input.new_role })
-        .eq('id', input.user_id);
+  const { error } = await supabase
+    .from('profiles')
+    .update({ role: input.new_role })
+    .eq('id', input.user_id);
 
-      if (error) {
-        throw new Error(error.message);
-      }
-      return;
-    }
-    throw err;
+  if (error) {
+    throw new Error(error.message);
   }
 }
 
 /**
- * Deactivate a staff account - owner only
+ * Deactivate a staff account - owner only.
+ * Directly updates profiles table with PostgreSQL RLS enforcement.
  */
 export async function deactivateStaffMember(userId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (user && user.id === userId) {
     throw new Error('You cannot deactivate your own account.');
   }
 
-  try {
-    await invokeStaffFunction<{ success: boolean }>({
-      action: 'deactivate',
-      user_id: userId,
-    });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : '';
-    if (errMsg === 'EDGE_FUNCTION_NOT_DEPLOYED' || edgeFunctionAvailable === false) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('id', userId);
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_active: false })
+    .eq('id', userId);
 
-      if (error) {
-        throw new Error(error.message);
-      }
-      return;
-    }
-    throw err;
+  if (error) {
+    throw new Error(error.message);
   }
 }
 
 /**
- * Reactivate a staff account - owner only
+ * Reactivate a staff account - owner only.
+ * Directly updates profiles table with PostgreSQL RLS enforcement.
  */
 export async function reactivateStaffMember(userId: string): Promise<void> {
-  try {
-    await invokeStaffFunction<{ success: boolean }>({
-      action: 'reactivate',
-      user_id: userId,
-    });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : '';
-    if (errMsg === 'EDGE_FUNCTION_NOT_DEPLOYED' || edgeFunctionAvailable === false) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: true })
-        .eq('id', userId);
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_active: true })
+    .eq('id', userId);
 
-      if (error) {
-        throw new Error(error.message);
-      }
-      return;
-    }
-    throw err;
+  if (error) {
+    throw new Error(error.message);
   }
 }
 
 /**
- * Reset staff password - owner only
+ * Reset staff password - owner only.
+ * Requires the admin-manage-staff Edge Function with elevated privileges.
  */
 export async function resetStaffPassword(userId: string, newPassword: string): Promise<void> {
-  try {
-    await invokeStaffFunction<{ success: boolean }>({
-      action: 'reset_password',
-      user_id: userId,
-      new_password: newPassword,
-    });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : '';
-    if (errMsg === 'EDGE_FUNCTION_NOT_DEPLOYED' || edgeFunctionAvailable === false) {
-      throw new Error(
-        "The 'admin-manage-staff' Edge Function is not deployed to your Supabase project. Resetting passwords requires deploying the edge function: npx supabase functions deploy admin-manage-staff"
-      );
-    }
-    throw err;
-  }
+  await invokeStaffFunction<{ success: boolean }>({
+    action: 'reset_password',
+    user_id: userId,
+    new_password: newPassword,
+  });
 }
 
 // -----------------------------------------------------------------------------
