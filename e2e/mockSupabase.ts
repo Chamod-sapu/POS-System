@@ -446,6 +446,90 @@ export async function setupMockSupabase(pageOrContext: Page | BrowserContext, op
       });
     }
 
+    // 7b. RPC x_report
+    if (url.includes('/rpc/x_report')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: JSON.stringify({
+          shift_id: 'shift-123',
+          terminal_name: 'Main Terminal',
+          cashier_name: activeUser.name,
+          status: 'open',
+          opened_at: '2026-01-01T08:00:00Z',
+          generated_at: new Date().toISOString(),
+          opening_float_cents: 250000,
+          sales_count: 1,
+          cash_sales_cents: 28000,
+          card_sales_cents: 0,
+          transfer_sales_cents: 0,
+          credit_sales_cents: 0,
+          cash_refunds_cents: 0,
+          cash_in_cents: 0,
+          cash_out_cents: 0,
+          expected_cash_cents: 278000,
+        }),
+      });
+    }
+
+    // 7c. RPC open_shift
+    if (url.includes('/rpc/open_shift')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: JSON.stringify({
+          id: 'shift-123',
+          cashier_id: activeUser.id,
+          status: 'open',
+          terminal_name: 'Main Terminal',
+          opening_float_cents: 250000,
+          opened_at: new Date().toISOString(),
+          closed_at: null,
+          notes: null,
+        }),
+      });
+    }
+
+    // 7d. RPC close_shift
+    if (url.includes('/rpc/close_shift')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: JSON.stringify({
+          id: 'shift-123',
+          shift_id: 'shift-123',
+          cashier_id: activeUser.id,
+          cashier_name: activeUser.name,
+          terminal_name: 'Main Terminal',
+          opened_at: '2026-01-01T08:00:00Z',
+          closed_at: new Date().toISOString(),
+          opening_float_cents: 250000,
+          cash_sales_cents: 28000,
+          change_given_cents: 0,
+          net_cash_sales_cents: 28000,
+          cash_refunds_cents: 0,
+          cash_in_cents: 0,
+          cash_out_cents: 0,
+          expected_cash_cents: 278000,
+          counted_cash_cents: 278000,
+          difference_cents: 0,
+          note: null,
+        }),
+      });
+    }
+
     // 8. Sales table
     if (url.includes('/sales')) {
       const sales = [

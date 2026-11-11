@@ -113,7 +113,30 @@ export async function closeShift(
     throw new Error(error.message);
   }
 
-  return data as unknown as ZReportData;
+  const raw = (data || {}) as Record<string, any>;
+  const cashSales = Number(raw.cash_sales_cents || 0);
+  const changeGiven = Number(raw.change_given_cents || 0);
+
+  return {
+    report_type: 'Z_REPORT',
+    shift_id: raw.id || raw.shift_id || '',
+    cashier_id: raw.cashier_id || '',
+    cashier_name: raw.cashier_name || 'Staff Member',
+    terminal_name: raw.terminal_name || 'Main Terminal',
+    opened_at: raw.opened_at || new Date().toISOString(),
+    closed_at: raw.closed_at || new Date().toISOString(),
+    opening_float_cents: Number(raw.opening_float_cents || 0),
+    cash_sales_cents: cashSales,
+    change_given_cents: changeGiven,
+    net_cash_sales_cents: Number(raw.net_cash_sales_cents ?? (cashSales - changeGiven)),
+    cash_refunds_cents: Number(raw.cash_refunds_cents || 0),
+    cash_in_cents: Number(raw.cash_in_cents || 0),
+    cash_out_cents: Number(raw.cash_out_cents || 0),
+    expected_cash_cents: Number(raw.expected_cash_cents || 0),
+    counted_cash_cents: Number(raw.counted_cash_cents || 0),
+    difference_cents: Number(raw.difference_cents || 0),
+    note: raw.note || null,
+  };
 }
 
 /**
@@ -129,7 +152,35 @@ export async function fetchXReport(shiftId?: string): Promise<XReportData> {
     throw new Error(error.message);
   }
 
-  return data as unknown as XReportData;
+  const raw = (data || {}) as Record<string, any>;
+  const cardSales = Number(raw.card_sales_cents || 0);
+  const transferSales = Number(raw.transfer_sales_cents || 0);
+  const creditSales = Number(raw.credit_sales_cents || 0);
+  const nonCashSales = cardSales + transferSales + creditSales;
+  const cashSales = Number(raw.cash_sales_cents || 0);
+  const changeGiven = Number(raw.change_given_cents || 0);
+
+  return {
+    report_type: 'X_REPORT',
+    shift_id: raw.shift_id || shiftId || '',
+    cashier_id: raw.cashier_id || '',
+    cashier_name: raw.cashier_name || 'Cashier',
+    terminal_name: raw.terminal_name || 'Main Terminal',
+    opened_at: raw.opened_at || new Date().toISOString(),
+    as_of: raw.as_of || raw.generated_at || new Date().toISOString(),
+    opening_float_cents: Number(raw.opening_float_cents || 0),
+    cash_sales_cents: cashSales,
+    change_given_cents: changeGiven,
+    net_cash_sales_cents: Number(raw.net_cash_sales_cents ?? (cashSales - changeGiven)),
+    non_cash_sales_cents: Number(raw.non_cash_sales_cents ?? nonCashSales),
+    gross_sales_cents: Number(raw.gross_sales_cents ?? (cashSales + nonCashSales)),
+    cash_refunds_cents: Number(raw.cash_refunds_cents || 0),
+    non_cash_refunds_cents: Number(raw.non_cash_refunds_cents || 0),
+    cash_in_cents: Number(raw.cash_in_cents || 0),
+    cash_out_cents: Number(raw.cash_out_cents || 0),
+    expected_cash_cents: Number(raw.expected_cash_cents || 0),
+    sales_count: Number(raw.sales_count || 0),
+  };
 }
 
 /**

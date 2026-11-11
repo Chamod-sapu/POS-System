@@ -21,12 +21,27 @@ export const ShiftReportReceipt: React.FC<ShiftReportReceiptProps> = ({
   paperWidth = '80mm',
   className = '',
 }) => {
+  if (!data) return null;
+
   const isZReport = data.report_type === 'Z_REPORT';
   const zData = isZReport ? (data as ZReportData) : null;
   const xData = !isZReport ? (data as XReportData) : null;
 
+  const safeCents = (v: unknown): number => {
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    if (typeof v === 'string') {
+      const parsed = Number(v);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
   const printableWidthStyle =
     paperWidth === '58mm' ? 'w-[48mm] max-w-[48mm]' : 'w-[72mm] max-w-[72mm]';
+
+  const diffCents = safeCents(zData?.difference_cents);
+  const changeGiven = safeCents(data.change_given_cents);
+  const netCash = safeCents(data.net_cash_sales_cents ?? (safeCents(data.cash_sales_cents) - changeGiven));
 
   return (
     <div
@@ -55,7 +70,7 @@ export const ShiftReportReceipt: React.FC<ShiftReportReceiptProps> = ({
       <div className="space-y-0.5 text-[10px]">
         <div className="flex justify-between">
           <span className="font-bold">Shift Ref:</span>
-          <span className="font-mono">{data.shift_id.slice(0, 8)}...</span>
+          <span className="font-mono">{data.shift_id ? `${data.shift_id.slice(0, 8)}...` : 'N/A'}</span>
         </div>
         <div className="flex justify-between">
           <span>Terminal:</span>
@@ -63,21 +78,21 @@ export const ShiftReportReceipt: React.FC<ShiftReportReceiptProps> = ({
         </div>
         <div className="flex justify-between">
           <span>Cashier:</span>
-          <span className="font-bold">{data.cashier_name}</span>
+          <span className="font-bold">{data.cashier_name || 'Staff Member'}</span>
         </div>
         <div className="flex justify-between">
           <span>Opened At:</span>
-          <span>{formatReceiptDate(data.opened_at)}</span>
+          <span>{formatReceiptDate(data.opened_at || new Date().toISOString())}</span>
         </div>
         {isZReport ? (
           <div className="flex justify-between font-bold">
             <span>Closed At:</span>
-            <span>{formatReceiptDate(zData!.closed_at)}</span>
+            <span>{formatReceiptDate(zData?.closed_at || new Date().toISOString())}</span>
           </div>
         ) : (
           <div className="flex justify-between">
             <span>Audit As Of:</span>
-            <span>{formatReceiptDate(xData!.as_of)}</span>
+            <span>{formatReceiptDate(xData?.as_of || (data as Record<string, any>)?.generated_at || new Date().toISOString())}</span>
           </div>
         )}
       </div>
@@ -91,39 +106,41 @@ export const ShiftReportReceipt: React.FC<ShiftReportReceiptProps> = ({
       <div className="space-y-1 text-[10px]">
         <div className="flex justify-between">
           <span>Opening Float:</span>
-          <span>{formatLKR(data.opening_float_cents)}</span>
+          <span>{formatLKR(safeCents(data.opening_float_cents))}</span>
         </div>
         <div className="flex justify-between">
           <span>Gross Cash Sales:</span>
-          <span>+{formatLKR(data.cash_sales_cents)}</span>
+          <span>+{formatLKR(safeCents(data.cash_sales_cents))}</span>
         </div>
-        <div className="flex justify-between text-slate-600">
-          <span>- Change Given:</span>
-          <span>-{formatLKR(data.change_given_cents)}</span>
-        </div>
+        {changeGiven > 0 && (
+          <div className="flex justify-between text-slate-600">
+            <span>- Change Given:</span>
+            <span>-{formatLKR(changeGiven)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-bold border-t border-dotted border-black/40 pt-0.5">
           <span>Net Cash Collected:</span>
-          <span>{formatLKR(data.net_cash_sales_cents)}</span>
+          <span>{formatLKR(netCash)}</span>
         </div>
 
-        {xData && (
+        {xData && safeCents(xData.non_cash_sales_cents) > 0 && (
           <div className="flex justify-between text-slate-600">
             <span>Card / Non-Cash Sales:</span>
-            <span>{formatLKR(xData.non_cash_sales_cents)}</span>
+            <span>{formatLKR(safeCents(xData.non_cash_sales_cents))}</span>
           </div>
         )}
 
         <div className="flex justify-between text-rose-800">
           <span>- Cash Refunds:</span>
-          <span>-{formatLKR(data.cash_refunds_cents)}</span>
+          <span>-{formatLKR(safeCents(data.cash_refunds_cents))}</span>
         </div>
         <div className="flex justify-between text-emerald-800">
           <span>+ Cash In (Float additions):</span>
-          <span>+{formatLKR(data.cash_in_cents)}</span>
+          <span>+{formatLKR(safeCents(data.cash_in_cents))}</span>
         </div>
         <div className="flex justify-between text-rose-800">
           <span>- Cash Out (Drops/Expenses):</span>
-          <span>-{formatLKR(data.cash_out_cents)}</span>
+          <span>-{formatLKR(safeCents(data.cash_out_cents))}</span>
         </div>
       </div>
 
@@ -131,7 +148,7 @@ export const ShiftReportReceipt: React.FC<ShiftReportReceiptProps> = ({
       <div className="my-1.5 border-t border-dashed border-black" />
       <div className="flex justify-between items-baseline text-xs font-black py-0.5">
         <span className="uppercase">EXPECTED CASH:</span>
-        <span className="text-sm font-black">{formatLKR(data.expected_cash_cents)}</span>
+        <span className="text-sm font-black">{formatLKR(safeCents(data.expected_cash_cents))}</span>
       </div>
 
       {/* 7. Z-Report Specific Count & Variance */}
@@ -139,34 +156,34 @@ export const ShiftReportReceipt: React.FC<ShiftReportReceiptProps> = ({
         <div className="mt-1 pt-1 border-t border-dashed border-black space-y-1 text-[11px]">
           <div className="flex justify-between font-bold">
             <span>COUNTED CASH:</span>
-            <span>{formatLKR(zData!.counted_cash_cents)}</span>
+            <span>{formatLKR(safeCents(zData?.counted_cash_cents))}</span>
           </div>
           <div
             className={`flex justify-between font-black text-xs p-1 rounded ${
-              zData!.difference_cents === 0
+              diffCents === 0
                 ? 'bg-emerald-50 text-emerald-900'
-                : zData!.difference_cents > 0
+                : diffCents > 0
                 ? 'bg-blue-50 text-blue-900'
                 : 'bg-rose-50 text-rose-900'
             }`}
           >
             <span>
-              {zData!.difference_cents === 0
+              {diffCents === 0
                 ? 'DRAWER BALANCED:'
-                : zData!.difference_cents > 0
+                : diffCents > 0
                 ? 'CASH OVER:'
                 : 'CASH SHORT:'}
             </span>
             <span>
-              {zData!.difference_cents > 0 ? '+' : ''}
-              {formatLKR(zData!.difference_cents)}
+              {diffCents > 0 ? '+' : ''}
+              {formatLKR(diffCents)}
             </span>
           </div>
 
-          {zData!.note && (
+          {zData?.note && (
             <div className="text-[10px] text-slate-800 italic pt-1 border-t border-dotted border-black/40">
               <span className="font-bold not-italic">Discrepancy Note: </span>
-              {zData!.note}
+              {zData.note}
             </div>
           )}
         </div>
