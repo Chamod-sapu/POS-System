@@ -1,10 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Bill } from './types';
 import { formatReceiptPlainText } from './lib/formatPlainText';
 import { verifyBill } from './lib/verifyBill';
 import { maskPhoneNumber } from './lib/maskPhone';
 import { encodeCode128BModules, generateCode128Svg } from './lib/barcode';
 import { BrowserPrintAdapter } from './lib/printerAdapter';
+
+vi.mock('../../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+    },
+    from: vi.fn().mockReturnValue({
+      insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }),
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // 6 Fixed Bills Test Fixtures

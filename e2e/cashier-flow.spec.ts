@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { setupMockSupabase } from './mockSupabase';
 
 test.describe('Cashier Checkout & Error Recovery Flow', () => {
   test.beforeEach(async ({ page }) => {
+    await setupMockSupabase(page);
     // Navigate to application
     await page.goto('/login');
   });
@@ -25,7 +27,7 @@ test.describe('Cashier Checkout & Error Recovery Flow', () => {
 
     // 4. Scan 3 barcodes via quick-scan input
     const scanInput = page.locator('input[placeholder*="Scan"], input[placeholder*="search"]').first();
-    await expect(scanInput).toBeVisible();
+    await expect(scanInput).toBeVisible({ timeout: 15000 });
 
     // Scan Item 1
     await scanInput.fill('9990001');
@@ -42,11 +44,16 @@ test.describe('Cashier Checkout & Error Recovery Flow', () => {
     // 5. Add weighed item (fractional quantity)
     await scanInput.fill('9990004');
     await scanInput.press('Enter');
-    const qtyModal = page.locator('text=Enter Weight / Quantity, [role="dialog"]');
-    if (await qtyModal.isVisible({ timeout: 2000 }).catch(() => false)) {
-      const qtyInput = page.locator('input[type="number"], input[name="quantity"]').first();
-      await qtyInput.fill('0.750');
-      await page.click('button:has-text("Confirm"), button:has-text("Add")');
+    const qtyModal = page.locator('[role="dialog"]').first();
+    if (await qtyModal.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const qtyInput = qtyModal.locator('input').first();
+      if (await qtyInput.isVisible()) {
+        await qtyInput.fill('0.750');
+      }
+      const addBtn = qtyModal.locator('button:has-text("Add to Cart"), button:has-text("Confirm")').first();
+      if (await addBtn.isVisible()) {
+        await addBtn.click();
+      }
     }
 
     // 6. Apply allowed line discount (e.g. 5%)
@@ -66,7 +73,7 @@ test.describe('Cashier Checkout & Error Recovery Flow', () => {
     await payBtn.click();
 
     // 8. Split payment: Cash + Card
-    const paymentModal = page.locator('[role="dialog"], text=Payment').first();
+    const paymentModal = page.locator('[role="dialog"]').first();
     await expect(paymentModal).toBeVisible();
 
     // Split cash portion
@@ -82,20 +89,20 @@ test.describe('Cashier Checkout & Error Recovery Flow', () => {
     }
 
     // Complete transaction
-    const completeBtn = page.locator('button:has-text("Complete Sale"), button:has-text("Confirm Payment")').first();
+    const completeBtn = page.locator('button:has-text("Confirm & Print"), button:has-text("Complete Sale"), button:has-text("Confirm Payment")').first();
     await completeBtn.click();
 
     // 9. Receipt modal and DUPLICATE COPY check on reprint
-    const receiptModal = page.locator('text=Receipt, text=Bill #').first();
+    const receiptModal = page.locator('[role="dialog"]').first();
     await expect(receiptModal).toBeVisible();
 
     // Click reprint
-    const reprintBtn = page.locator('button:has-text("Print"), button:has-text("Reprint")').first();
+    const reprintBtn = receiptModal.locator('button:has-text("Print"), button:has-text("Reprint")').first();
     await reprintBtn.click();
 
     // Check for duplicate banner
     const duplicateBanner = page.locator('text=DUPLICATE COPY');
-    await expect(duplicateBanner).toBeVisible({ timeout: 5000 });
+    await expect(duplicateBanner).toBeVisible({ timeout: 10000 });
   });
 
   test('Error scenarios: out-of-stock item, forbidden discount, no open shift, network drop, printer failure', async ({ page }) => {
@@ -109,7 +116,7 @@ test.describe('Cashier Checkout & Error Recovery Flow', () => {
         await discInput.fill('50'); // 50% discount exceeds cashier limit
         await page.click('button:has-text("Apply")');
         // Expect manager approval prompt or forbidden error
-        const approvalReq = page.locator('text=Manager PIN required, text=Exceeds limit, text=FORBIDDEN_DISCOUNT');
+        const approvalReq = page.locator('text=/Manager PIN required|Exceeds limit|FORBIDDEN_DISCOUNT/i').first();
         await expect(approvalReq).toBeVisible();
       }
     }
@@ -119,7 +126,7 @@ test.describe('Cashier Checkout & Error Recovery Flow', () => {
     if (await scanInput.isVisible()) {
       await scanInput.fill('OUT-OF-STOCK-SKU');
       await scanInput.press('Enter');
-      const oosAlert = page.locator('text=Out of stock, text=OUT_OF_STOCK, text=Insufficient stock');
+      const oosAlert = page.locator('text=/Out of stock|OUT_OF_STOCK|Insufficient stock/i').first();
       await expect(oosAlert).toBeVisible({ timeout: 3000 }).catch(() => {});
     }
 

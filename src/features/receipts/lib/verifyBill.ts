@@ -145,22 +145,30 @@ export function verifyBill(bill: Bill): BillVerificationResult {
  */
 export async function logBillIntegrityFailure(bill: Bill, error: string): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const logPromise = (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    await supabase.from('audit_log').insert({
-      user_id: user?.id ?? null,
-      action: 'bill.integrity_error',
-      table_name: 'sales',
-      record_id: bill.id,
-      new_data: {
-        bill_no: bill.bill_no,
-        error,
-        bill_id: bill.id,
-        timestamp: new Date().toISOString(),
-      },
-    });
+      await supabase.from('audit_log').insert({
+        user_id: user?.id ?? null,
+        action: 'bill.integrity_error',
+        table_name: 'sales',
+        record_id: bill.id,
+        new_data: {
+          bill_no: bill.bill_no,
+          error,
+          bill_id: bill.id,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    })();
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Audit log timeout')), 2000)
+    );
+
+    await Promise.race([logPromise, timeoutPromise]);
   } catch (err) {
     console.error('Failed to write bill integrity failure to audit_log:', err);
   }

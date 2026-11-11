@@ -32,6 +32,8 @@ lerna-debug.log*
 .DS_Store
 Thumbs.db
 
-# Test coverage
+# Test coverage and reports
 coverage/
+playwright-report/
+test-results/
 

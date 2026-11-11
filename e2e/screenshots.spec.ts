@@ -1,6 +1,7 @@
 import { test } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { setupMockSupabase } from './mockSupabase';
 
 const VIEWPORTS = [
   { name: '1366x768', width: 1366, height: 768 },
@@ -33,6 +34,7 @@ test.describe('Automated UI Screen Capture Suite', () => {
   for (const vp of VIEWPORTS) {
     for (const theme of THEMES) {
       test(`Captures screens at ${vp.name} in ${theme} theme`, async ({ page }) => {
+        await setupMockSupabase(page, { currentRole: 'manager' });
         await page.setViewportSize({ width: vp.width, height: vp.height });
 
         // Set theme in localStorage

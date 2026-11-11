@@ -190,6 +190,11 @@ export const SaleSuccessModal: React.FC<SaleSuccessModalProps> = ({
           <p className="font-mono text-sm text-slate-500 dark:text-slate-400 font-bold mt-1">
             Bill No: <span className="text-brand-600 dark:text-brand-400 font-bold">{sale.bill_no}</span>
           </p>
+          {printCount >= 1 && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-black rounded-full uppercase tracking-wider">
+              *** DUPLICATE COPY ***
+            </div>
+          )}
         </div>
 
         {/* Change Due Highlight Card */}
