@@ -478,3 +478,4 @@ GRANT EXECUTE ON FUNCTION receive_purchase TO authenticated;
 
 REVOKE ALL ON FUNCTION cancel_purchase FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION cancel_purchase TO authenticated;
+
