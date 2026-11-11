@@ -175,6 +175,37 @@ describe('Shared UI Components', () => {
       expect(handleClose).toHaveBeenCalledTimes(1);
     });
 
+    it('does not steal focus to the close button when input value changes and parent re-renders', () => {
+      const TestFormModal = () => {
+        const [value, setValue] = React.useState('');
+        return (
+          <Modal isOpen={true} onClose={() => {}} title="Test Form">
+            <input
+              data-testid="test-input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+          </Modal>
+        );
+      };
+
+      render(<TestFormModal />);
+      const input = screen.getByTestId('test-input');
+      const closeBtn = screen.getByRole('button', { name: /Close dialog/i });
+
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      // Type characters and ensure focus stays on input and does not jump to closeBtn
+      fireEvent.change(input, { target: { value: 'A' } });
+      expect(document.activeElement).toBe(input);
+      expect(document.activeElement).not.toBe(closeBtn);
+
+      fireEvent.change(input, { target: { value: 'AB' } });
+      expect(document.activeElement).toBe(input);
+      expect(document.activeElement).not.toBe(closeBtn);
+    });
+
     it('renders ConfirmDialog and triggers onConfirm on button click', () => {
       const handleConfirm = vi.fn();
       const handleClose = vi.fn();

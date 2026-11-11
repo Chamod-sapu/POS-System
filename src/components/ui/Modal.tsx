@@ -13,6 +13,7 @@ export interface ModalProps {
   closeOnEscape?: boolean;
   showCloseButton?: boolean;
   className?: string;
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -27,13 +28,20 @@ export const Modal: React.FC<ModalProps> = ({
   closeOnEscape = true,
   showCloseButton = true,
   className = '',
+  initialFocusRef,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const descId = useId();
 
-  // Focus trap & escape key handler
+  // Stable reference for onClose so re-renders never trigger effects
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // Initial focus and body scroll lock (runs strictly ONCE when modal transitions to open)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -43,24 +51,67 @@ export const Modal: React.FC<ModalProps> = ({
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus the modal or its first focusable element
+    // Set initial focus smoothly after child elements mount in the DOM
+    const focusTimer = setTimeout(() => {
+      if (!modalRef.current) return;
+
+      // 1. Explicit initial focus ref passed by caller
+      if (initialFocusRef?.current) {
+        initialFocusRef.current.focus();
+        return;
+      }
+
+      // 2. Explicit autofocus element inside modal content
+      const autoFocusEl = modalRef.current.querySelector<HTMLElement>('[autofocus], [data-autofocus]');
+      if (autoFocusEl) {
+        autoFocusEl.focus();
+        return;
+      }
+
+      // 3. First form input in the modal body (excluding the top header close button)
+      const inputEl = modalRef.current.querySelector<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
+      );
+      if (inputEl) {
+        inputEl.focus();
+        return;
+      }
+
+      // 4. First non-close action button (e.g. Confirm or Action button in footer)
+      const actionButton = modalRef.current.querySelector<HTMLElement>(
+        'button:not([disabled]):not([aria-label="Close dialog"])'
+      );
+      if (actionButton) {
+        actionButton.focus();
+        return;
+      }
+
+      // 5. Fallback: focus the modal container itself
+      modalRef.current.focus();
+    }, 20);
+
+    return () => {
+      clearTimeout(focusTimer);
+      document.body.style.overflow = originalOverflow;
+      previousActiveElementRef.current?.focus();
+    };
+  }, [isOpen]); // Intentionally ONLY depends on isOpen to never steal focus during typing or re-renders
+
+  // Keyboard navigation: Escape key and Tab focus trap
+  useEffect(() => {
+    if (!isOpen) return;
+
     const focusableSelectors =
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(focusableSelectors);
-    if (focusableElements && focusableElements.length > 0) {
-      focusableElements[0]?.focus();
-    } else {
-      modalRef.current?.focus();
-    }
+      'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (closeOnEscape && e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
-      // Focus trap navigation
+      // Focus trap navigation inside the modal
       if (e.key === 'Tab' && modalRef.current) {
         const elements = modalRef.current.querySelectorAll<HTMLElement>(focusableSelectors);
         if (elements.length === 0) return;
@@ -85,11 +136,9 @@ export const Modal: React.FC<ModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
-      previousActiveElementRef.current?.focus();
     };
-  }, [isOpen, closeOnEscape, onClose]);
+  }, [isOpen, closeOnEscape]);
 
   if (!isOpen) return null;
 
@@ -141,7 +190,7 @@ export const Modal: React.FC<ModalProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-subtle focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
