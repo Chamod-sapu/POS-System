@@ -481,7 +481,10 @@ export const StaffManagementPage: React.FC = () => {
                 variant="primary"
                 size="sm"
                 leftIcon={<UserPlus className="w-4 h-4" />}
-                onClick={() => setIsAddOpen(true)}
+                onClick={() => {
+                  setActionError(null);
+                  setIsAddOpen(true);
+                }}
               >
                 Add Staff Member
               </Button>
@@ -560,6 +563,13 @@ export const StaffManagementPage: React.FC = () => {
               />
             </div>
 
+            {actionError && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span>{actionError}</span>
+              </div>
+            )}
+
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end space-x-2">
               <Button
                 variant="outline"
@@ -607,6 +617,13 @@ export const StaffManagementPage: React.FC = () => {
               {roleModalUser.role === 'owner' && targetRole !== 'owner' && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-900 dark:text-amber-200 text-xs leading-relaxed">
                   <span className="font-bold">Warning:</span> Demoting an owner will revoke administrative access. The system will refuse this change if this is the last active store owner.
+                </div>
+              )}
+
+              {actionError && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <span>{actionError}</span>
                 </div>
               )}
 
@@ -665,6 +682,13 @@ export const StaffManagementPage: React.FC = () => {
                 }
               />
 
+              {actionError && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <span>{actionError}</span>
+                </div>
+              )}
+
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end space-x-2">
                 <Button
                   variant="outline"
@@ -717,6 +741,13 @@ export const StaffManagementPage: React.FC = () => {
               {confirmModal.action === 'deactivate' && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-900 dark:text-amber-200 text-xs leading-relaxed">
                   They will be immediately logged out and unable to sign in to any POS terminal or management dashboard until reactivated.
+                </div>
+              )}
+
+              {actionError && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <span>{actionError}</span>
                 </div>
               )}
 

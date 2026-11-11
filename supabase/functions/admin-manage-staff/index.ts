@@ -24,7 +24,7 @@ function getCorsHeaders(req: Request) {
 
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region, prefer, accept",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 }
@@ -46,7 +46,7 @@ serve(async (req: Request) => {
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
