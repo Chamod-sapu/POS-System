@@ -572,7 +572,7 @@ export const POSPage: React.FC = () => {
           </div>
 
           {/* Catalog & Category Grid */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <ProductGrid
               products={catalog}
               isLoading={isCatalogLoading}

@@ -241,6 +241,24 @@ export async function setupMockSupabase(pageOrContext: Page | BrowserContext, op
       });
     }
 
+    // 3b. Categories Table
+    if (url.includes('/categories')) {
+      const categories = [
+        { id: 'cat-grains', name: 'Grains & Rice', is_active: true },
+        { id: 'cat-dairy', name: 'Dairy & Eggs', is_active: true },
+        { id: 'cat-beverages', name: 'Beverages & Tea', is_active: true },
+      ];
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: JSON.stringify(isSingle ? categories[0] : categories),
+      });
+    }
+
     // 4. Products & POS Products View
     if (url.includes('/pos_products') || url.includes('/products')) {
       const products = [

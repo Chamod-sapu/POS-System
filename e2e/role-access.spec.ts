@@ -12,7 +12,7 @@ test.describe('Role-Based Access Control E2E Verification', () => {
     await page.fill('input[type="email"]', 'cashier@wewala.lk');
     await page.fill('input[type="password"]', 'CashierPass123!');
     await page.click('button[type="submit"]');
-    await page.waitForURL((url) => url.pathname !== '/login', { timeout: 10000 }).catch(() => {});
+    await page.waitForURL((url) => url.pathname !== '/login', { timeout: 10000 }).catch(() => { });
 
     // Attempt direct URL navigation to /reports
     await page.goto('/reports');
@@ -36,7 +36,7 @@ test.describe('Role-Based Access Control E2E Verification', () => {
     await page.fill('input[type="email"]', 'manager@wewala.lk');
     await page.fill('input[type="password"]', 'ManagerPass123!');
     await page.click('button[type="submit"]');
-    await page.waitForURL((url) => url.pathname !== '/login', { timeout: 10000 }).catch(() => {});
+    await page.waitForURL((url) => url.pathname !== '/login', { timeout: 10000 }).catch(() => { });
 
     // Manager can access /reports
     await page.goto('/reports');
