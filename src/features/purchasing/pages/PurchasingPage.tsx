@@ -14,6 +14,11 @@ import {
   Eye,
   AlertCircle,
   Package,
+  Barcode,
+  Receipt,
+  PackagePlus,
+  Building2,
+  Layers,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { StatCard } from '../../../components/ui/StatCard';
@@ -23,6 +28,7 @@ import { DataTable, Column } from '../../../components/ui/DataTable';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
+import { Select } from '../../../components/ui/Select';
 import { formatLKR } from '../../../lib/money';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { PaymentMethod, PurchaseStatus } from '../../../types/database';
@@ -523,35 +529,30 @@ export const PurchasingPage: React.FC = () => {
         isOpen={isGRNModalOpen}
         onClose={() => setIsGRNModalOpen(false)}
         title="Receive Goods - New Purchase Order (GRN)"
+        description="Log supplier shipments, verify unit costs, record batch numbers & expiry, and update stock balances."
         size="xl"
       >
         <form onSubmit={handleSubmitGRN} className="space-y-4">
           {grnError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-              <span>{grnError}</span>
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 rounded-xl text-xs flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+              <span className="font-semibold">{grnError}</span>
             </div>
           )}
 
-          {/* Supplier & Invoice No Header */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          {/* Supplier & Invoice No Header Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl shadow-subtle">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Supplier / Vendor <span className="text-rose-500">*</span>
-              </label>
-              <select
+              <Select
+                label="Supplier / Vendor"
+                required
                 value={selectedSupplierId}
                 onChange={(e) => setSelectedSupplierId(e.target.value)}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                required
-              >
-                <option value="">-- Choose Supplier --</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: '-- Choose Supplier --' },
+                  ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+                ]}
+              />
             </div>
 
             <div>
@@ -566,21 +567,27 @@ export const PurchasingPage: React.FC = () => {
           </div>
 
           {/* Product Search & Scanner Input */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700">
-              Scan Barcode or Search Product to Add
+          <div className="relative">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center space-x-1.5">
+                <Barcode className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <span>Scan Barcode or Search Products to Add</span>
+              </span>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-normal lowercase">
+                (search by name, sku, or barcode)
+              </span>
             </label>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Type SKU, barcode, or product name..."
-                className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-h-[42px] pl-10 pr-24 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-subtle shadow-subtle"
               />
               {isSearchingProduct && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-400 animate-pulse">
                   Searching...
                 </span>
               )}
@@ -588,29 +595,36 @@ export const PurchasingPage: React.FC = () => {
 
             {/* Product search suggestions dropdown */}
             {productResults.length > 0 && (
-              <div className="border border-slate-200 rounded-xl bg-white shadow-lg overflow-hidden divide-y divide-slate-100 max-h-48 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-slate-900 shadow-overlay overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 max-h-56 overflow-y-auto z-20">
                 {productResults.map((p) => (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => handleAddProductToGRN(p)}
-                    className="w-full p-2.5 text-left text-xs hover:bg-emerald-50 flex items-center justify-between transition-colors"
+                    className="w-full p-3 text-left hover:bg-brand-50/70 dark:hover:bg-brand-950/50 flex items-center justify-between transition-colors cursor-pointer group"
                   >
                     <div>
-                      <span className="font-semibold text-slate-900 block">{p.name}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        SKU: {p.sku} &bull; Unit: {p.unit}
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors block">
+                        {p.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 block">
+                        SKU: {p.sku} {p.barcode && `• Barcode: ${p.barcode}`} • Unit: {p.unit}
                       </span>
                     </div>
-                    <div className="text-right">
-                      <span className="font-mono text-xs font-bold text-slate-700 block">
-                        Cost: {formatLKR(p.cost_price_cents || 0)}
-                      </span>
-                      {p.track_expiry && (
-                        <span className="text-[9px] text-amber-700 font-bold uppercase">
-                          Batch Tracked
+                    <div className="text-right flex items-center space-x-3">
+                      <div>
+                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                          Cost: {formatLKR(p.cost_price_cents || 0)}
                         </span>
-                      )}
+                        {p.track_expiry && (
+                          <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            Batch Tracked
+                          </span>
+                        )}
+                      </div>
+                      <span className="p-1 rounded-lg bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 group-hover:bg-brand-600 group-hover:text-white transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                      </span>
                     </div>
                   </button>
                 ))}
@@ -618,199 +632,280 @@ export const PurchasingPage: React.FC = () => {
             )}
           </div>
 
-          {/* Line items table */}
-          <div className="border border-slate-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider border-b border-slate-200 text-[10px]">
-                <tr>
-                  <th className="py-2 px-3">Product</th>
-                  <th className="py-2 px-3 w-20">Qty</th>
-                  <th className="py-2 px-3 w-28">Unit Cost (Rs)</th>
-                  <th className="py-2 px-3 w-28">Batch No</th>
-                  <th className="py-2 px-3 w-32">Expiry Date</th>
-                  <th className="py-2 px-3 text-right">Line Total</th>
-                  <th className="py-2 px-2 w-8"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {grnLines.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400">
-                      No products added to this shipment yet. Search and select items above.
-                    </td>
-                  </tr>
-                ) : (
-                  grnLines.map((line, idx) => {
-                    // Cost variance calculation (>20% shift)
-                    const oldCost = line.currentCostCents;
-                    const newCost = line.unitCostCents;
-                    let variancePercent: number | null = null;
-                    if (oldCost > 0) {
-                      variancePercent = ((newCost - oldCost) / oldCost) * 100;
-                    }
-                    const isSignificantChange =
-                      variancePercent !== null && Math.abs(variancePercent) > 20;
+          {/* Line Items Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-slate-500" />
+                <span>Received Line Items</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold">
+                  {grnLines.length}
+                </span>
+              </div>
+              {grnLines.length > 0 && (
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                  Total Items: {grnLines.reduce((sum, l) => sum + l.quantity, 0)} units
+                </span>
+              )}
+            </div>
 
-                    return (
-                      <tr
-                        key={line.productId}
-                        className={`hover:bg-slate-50 ${
-                          isSignificantChange ? 'bg-amber-50/50' : ''
-                        }`}
-                      >
-                        <td className="py-2 px-3">
-                          <span className="font-semibold text-slate-900 block">{line.name}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            {line.sku} ({line.unit})
-                          </span>
-                          {isSignificantChange && variancePercent !== null && (
-                            <div className="mt-0.5 inline-flex items-center space-x-1 text-[10px] text-amber-800 font-semibold bg-amber-100 px-1.5 py-0.5 rounded">
-                              <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />
-                              <span>
-                                Cost {variancePercent > 0 ? '+' : ''}
-                                {variancePercent.toFixed(1)}% vs current ({formatLKR(oldCost)})
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            type="number"
-                            min="0.001"
-                            step="any"
-                            value={line.quantity}
-                            onChange={(e) =>
-                              handleUpdateGRNLine(idx, {
-                                quantity: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                            className="w-16 px-2 py-1 border border-slate-300 rounded font-mono text-xs text-right"
-                            required
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={(line.unitCostCents / 100).toFixed(2)}
-                            onChange={(e) =>
-                              handleUpdateGRNLine(idx, {
-                                unitCostCents: Math.round((parseFloat(e.target.value) || 0) * 100),
-                              })
-                            }
-                            className="w-24 px-2 py-1 border border-slate-300 rounded font-mono text-xs text-right"
-                            required
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            type="text"
-                            value={line.batchNo}
-                            onChange={(e) => handleUpdateGRNLine(idx, { batchNo: e.target.value })}
-                            placeholder="Optional"
-                            className="w-24 px-2 py-1 border border-slate-300 rounded font-mono text-xs"
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            type="date"
-                            value={line.expiryDate}
-                            onChange={(e) =>
-                              handleUpdateGRNLine(idx, { expiryDate: e.target.value })
-                            }
-                            className={`w-28 px-2 py-1 border rounded text-xs ${
-                              line.trackExpiry && !line.expiryDate
-                                ? 'border-amber-400 bg-amber-50'
-                                : 'border-slate-300'
-                            }`}
-                            required={line.trackExpiry}
-                          />
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                          {formatLKR(BigInt(Math.round(line.quantity * line.unitCostCents)))}
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveGRNLine(idx)}
-                            className="text-slate-400 hover:text-rose-600 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-subtle">
+              {grnLines.length === 0 ? (
+                <div className="py-10 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 dark:bg-slate-900/40">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200/60 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-2 shadow-subtle">
+                    <Package className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    No items added to this shipment yet
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-sm">
+                    Scan a barcode or use the search box above to add products to this Goods Received Note.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 text-[10px] sticky top-0 z-10 backdrop-blur-sm">
+                      <tr>
+                        <th className="py-2.5 px-3 min-w-[170px]">Product</th>
+                        <th className="py-2.5 px-3 w-24">Qty</th>
+                        <th className="py-2.5 px-3 w-28">Unit Cost (Rs)</th>
+                        <th className="py-2.5 px-3 w-28">Batch No</th>
+                        <th className="py-2.5 px-3 w-32">Expiry Date</th>
+                        <th className="py-2.5 px-3 text-right min-w-[110px]">Line Total</th>
+                        <th className="py-2.5 px-2 w-10 text-center"></th>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                      {grnLines.map((line, idx) => {
+                        const oldCost = line.currentCostCents;
+                        const newCost = line.unitCostCents;
+                        let variancePercent: number | null = null;
+                        if (oldCost > 0) {
+                          variancePercent = ((newCost - oldCost) / oldCost) * 100;
+                        }
+                        const isSignificantChange =
+                          variancePercent !== null && Math.abs(variancePercent) > 20;
+
+                        return (
+                          <tr
+                            key={line.productId}
+                            className={`transition-colors ${
+                              isSignificantChange
+                                ? 'bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-50/70 dark:hover:bg-amber-950/30'
+                                : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
+                            }`}
+                          >
+                            {/* Product Details */}
+                            <td className="py-2.5 px-3">
+                              <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                                {line.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                                {line.sku} &bull; {line.unit}
+                              </span>
+                              {isSignificantChange && variancePercent !== null && (
+                                <div className="mt-1 inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                  <span>
+                                    Cost {variancePercent > 0 ? '+' : ''}
+                                    {variancePercent.toFixed(1)}% vs old ({formatLKR(oldCost)})
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Quantity */}
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="number"
+                                min="0.001"
+                                step="any"
+                                value={line.quantity}
+                                onChange={(e) =>
+                                  handleUpdateGRNLine(idx, {
+                                    quantity: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg font-mono text-xs text-right bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                required
+                              />
+                            </td>
+
+                            {/* Unit Cost */}
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={(line.unitCostCents / 100).toFixed(2)}
+                                onChange={(e) =>
+                                  handleUpdateGRNLine(idx, {
+                                    unitCostCents: Math.round((parseFloat(e.target.value) || 0) * 100),
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg font-mono text-xs text-right bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                required
+                              />
+                            </td>
+
+                            {/* Batch No */}
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="text"
+                                value={line.batchNo}
+                                onChange={(e) => handleUpdateGRNLine(idx, { batchNo: e.target.value })}
+                                placeholder={line.trackExpiry ? 'Batch (Req.)' : 'Optional'}
+                                className={`w-full px-2 py-1.5 border rounded-lg font-mono text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-brand-500 ${
+                                  line.trackExpiry && !line.batchNo
+                                    ? 'border-purple-300 dark:border-purple-800'
+                                    : 'border-slate-300 dark:border-slate-700'
+                                }`}
+                              />
+                            </td>
+
+                            {/* Expiry Date */}
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="date"
+                                value={line.expiryDate}
+                                onChange={(e) =>
+                                  handleUpdateGRNLine(idx, { expiryDate: e.target.value })
+                                }
+                                className={`w-full px-2 py-1.5 border rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-brand-500 ${
+                                  line.trackExpiry && !line.expiryDate
+                                    ? 'border-purple-400 dark:border-purple-600 bg-purple-50/50 dark:bg-purple-950/30'
+                                    : 'border-slate-300 dark:border-slate-700'
+                                }`}
+                                required={line.trackExpiry}
+                              />
+                            </td>
+
+                            {/* Line Total */}
+                            <td className="py-2.5 px-3 text-right">
+                              <Money
+                                size="sm"
+                                cents={BigInt(Math.round(line.quantity * line.unitCostCents))}
+                              />
+                            </td>
+
+                            {/* Remove action */}
+                            <td className="py-2.5 px-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGRNLine(idx)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                                title="Remove item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Payment & Totals Summary */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Payment & Totals Summary Panel */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3 shadow-subtle">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-center">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Amount Paid Now (Rs.)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={paidNowRupees}
-                  onChange={(e) => setPaidNowRupees(e.target.value)}
-                  placeholder="0.00 (Unpaid on credit)"
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono"
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-400">
+                    Rs.
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={paidNowRupees}
+                    onChange={(e) => setPaidNowRupees(e.target.value)}
+                    placeholder="0.00 (Unpaid on Credit)"
+                    className="w-full min-h-[42px] pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-subtle"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  Leave at 0 if inventory was purchased on vendor credit terms.
+                </p>
+              </div>
+
+              <div>
+                <Select
+                  label="Payment Method"
+                  value={payMethod}
+                  onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
+                  options={[
+                    { value: 'bank_transfer', label: 'Bank Transfer' },
+                    { value: 'cash', label: 'Cash' },
+                    { value: 'card', label: 'Company Card' },
+                  ]}
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Payment Method
-                </label>
-                <select
-                  value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
-                >
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cash">Cash</option>
-                  <option value="card">Company Card</option>
-                </select>
-              </div>
-
-              <div className="text-right flex flex-col justify-center">
-                <span className="text-[11px] text-slate-500 font-medium">Order Total:</span>
-                <span className="text-base font-extrabold text-slate-900 font-mono">
-                  {formatLKR(totalOrderCents)}
-                </span>
-                <span className="text-[11px] text-rose-700 font-bold mt-0.5">
-                  Balance Owed: {formatLKR(balanceOwedCents > 0n ? balanceOwedCents : 0n)}
-                </span>
+              <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 rounded-xl text-right flex flex-col justify-center space-y-1.5 shadow-subtle">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span className="font-medium">Order Total:</span>
+                  <Money size="md" cents={totalOrderCents} />
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Balance:</span>
+                  {balanceOwedCents > 0n ? (
+                    <span className="font-bold text-rose-600 dark:text-rose-400">
+                      Owed: {formatLKR(balanceOwedCents)}
+                    </span>
+                  ) : balanceOwedCents === 0n && totalOrderCents > 0n ? (
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      Paid in Full
+                    </span>
+                  ) : balanceOwedCents < 0n ? (
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      Credit: {formatLKR(-balanceOwedCents)}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-2 border-t border-slate-200">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => setIsGRNModalOpen(false)}
-              disabled={isSubmittingGRN}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              type="submit"
-              isLoading={isSubmittingGRN}
-              disabled={grnLines.length === 0}
-            >
-              Receive Inventory & Update Stock
-            </Button>
+          {/* Modal Action Buttons */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+              {grnLines.length > 0 && (
+                <span>
+                  Receiving <strong className="text-slate-900 dark:text-slate-100">{grnLines.length}</strong> items into store inventory
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsGRNModalOpen(false)}
+                disabled={isSubmittingGRN}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                isLoading={isSubmittingGRN}
+                disabled={grnLines.length === 0}
+                leftIcon={<CheckCircle2 className="w-4 h-4" />}
+              >
+                Receive Inventory & Update Stock
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>
@@ -823,21 +918,23 @@ export const PurchasingPage: React.FC = () => {
         size="lg"
       >
         {isDetailLoading ? (
-          <div className="p-8 text-center text-slate-500 text-xs">Loading GRN information...</div>
+          <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+            Loading GRN information...
+          </div>
         ) : purchaseDetail ? (
           <div className="space-y-4">
-            <div className="flex justify-between items-start border-b border-slate-200 pb-3">
+            <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <span className="text-base font-bold text-slate-900 block">
+                <span className="text-base font-bold text-slate-900 dark:text-slate-100 block">
                   Invoice #{purchaseDetail.invoice_no}
                 </span>
-                <span className="text-xs text-slate-600 block">
-                  Supplier: <strong>{purchaseDetail.supplier.name}</strong>
+                <span className="text-xs text-slate-600 dark:text-slate-400 block mt-0.5">
+                  Supplier: <strong className="text-slate-800 dark:text-slate-200">{purchaseDetail.supplier.name}</strong>
                   {purchaseDetail.supplier.contact_person && (
                     <span> (Attn: {purchaseDetail.supplier.contact_person})</span>
                   )}
                 </span>
-                <span className="text-[11px] text-slate-500 font-mono">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono block mt-0.5">
                   Date: {new Date(purchaseDetail.created_at).toLocaleString('en-LK', { timeZone: 'Asia/Colombo' })}
                 </span>
               </div>
@@ -848,50 +945,50 @@ export const PurchasingPage: React.FC = () => {
                 >
                   {purchaseDetail.status}
                 </Badge>
-                <span className="block font-mono font-extrabold text-slate-900 text-base mt-1">
-                  {formatLKR(purchaseDetail.total_cents)}
-                </span>
+                <div className="mt-1">
+                  <Money size="md" cents={purchaseDetail.total_cents} />
+                </div>
               </div>
             </div>
 
             {/* Items Table */}
-            <div className="border border-slate-200 rounded-xl overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider border-b border-slate-200 text-[10px]">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto bg-white dark:bg-slate-900 shadow-subtle">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 text-[10px]">
                   <tr>
-                    <th className="py-2 px-3">Item / SKU</th>
-                    <th className="py-2 px-3 text-right">Qty</th>
-                    <th className="py-2 px-3 text-right">Unit Cost</th>
-                    <th className="py-2 px-3">Batch & Expiry</th>
-                    <th className="py-2 px-3 text-right">Total Cost</th>
+                    <th className="py-2.5 px-3">Item / SKU</th>
+                    <th className="py-2.5 px-3 text-right">Qty</th>
+                    <th className="py-2.5 px-3 text-right">Unit Cost</th>
+                    <th className="py-2.5 px-3">Batch & Expiry</th>
+                    <th className="py-2.5 px-3 text-right">Total Cost</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-mono text-[11px]">
                   {purchaseDetail.items.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="py-2 px-3 font-sans">
-                        <span className="font-semibold text-slate-900 block">
+                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+                      <td className="py-2.5 px-3 font-sans">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 block">
                           {item.product_name}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                           {item.product_sku}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-right text-slate-800">
+                      <td className="py-2.5 px-3 text-right text-slate-800 dark:text-slate-200">
                         {item.quantity} {item.product_unit}
                       </td>
-                      <td className="py-2 px-3 text-right text-slate-800">
+                      <td className="py-2.5 px-3 text-right text-slate-800 dark:text-slate-200">
                         {formatLKR(item.unit_cost_cents)}
                       </td>
-                      <td className="py-2 px-3 text-slate-600 font-sans text-xs">
+                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-sans text-xs">
                         {item.batch_no && <span>Batch: {item.batch_no} </span>}
                         {item.expiry_date && (
-                          <span className="text-amber-700">Exp: {item.expiry_date}</span>
+                          <span className="text-amber-700 dark:text-amber-400">Exp: {item.expiry_date}</span>
                         )}
                         {!item.batch_no && !item.expiry_date && <span>-</span>}
                       </td>
-                      <td className="py-2 px-3 text-right font-bold text-slate-900">
-                        {formatLKR(item.total_cost_cents)}
+                      <td className="py-2.5 px-3 text-right">
+                        <Money size="sm" cents={item.total_cost_cents} />
                       </td>
                     </tr>
                   ))}
@@ -899,7 +996,7 @@ export const PurchasingPage: React.FC = () => {
               </table>
             </div>
 
-            <div className="flex justify-between items-center pt-2 border-t border-slate-200 print:hidden">
+            <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800 print:hidden">
               <Button
                 variant="outline"
                 size="sm"

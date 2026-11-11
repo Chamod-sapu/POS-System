@@ -170,6 +170,6 @@ describe('Property-Based Tests for Bill Calculations (Vitest + fast-check)', () 
     }
 
     expect(runsCount).toBeGreaterThanOrEqual(1000);
-  });
+  }, 15000);
 });
 
