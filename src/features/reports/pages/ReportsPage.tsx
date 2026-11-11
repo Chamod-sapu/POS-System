@@ -357,9 +357,96 @@ export const ReportsPage: React.FC = () => {
         downloadCsv(`returns_and_voids_${fromDate}_${toDate}`, rows, cols);
         break;
       }
+      case 'dead_stock': {
+        const rows = reportData as DeadStockRow[];
+        const cols: CsvColumn<DeadStockRow>[] = [
+          { header: 'Product Name', accessor: (r) => r.product_name },
+          { header: 'SKU', accessor: (r) => r.sku },
+          { header: 'Category', accessor: (r) => r.category_name },
+          { header: 'Stock Qty', accessor: (r) => r.stock_qty },
+          { header: 'Days Since Last Sale', accessor: (r) => r.days_since_last_sale },
+          { header: 'Valuation at Cost (LKR)', accessor: (r) => r.valuation_at_cost_cents, isMoneyCents: true },
+          { header: 'Last Sold At', accessor: (r) => r.last_sold_at || 'Never' },
+        ];
+        downloadCsv('dead_stock_30d', rows, cols);
+        break;
+      }
+      case 'expiry_watch': {
+        const rows = reportData as ExpiryRow[];
+        const cols: CsvColumn<ExpiryRow>[] = [
+          { header: 'Product Name', accessor: (r) => r.product_name },
+          { header: 'SKU', accessor: (r) => r.sku },
+          { header: 'Batch No', accessor: (r) => r.batch_no },
+          { header: 'Expiry Date', accessor: (r) => r.expiry_date },
+          { header: 'Qty Remaining', accessor: (r) => r.qty_remaining },
+          { header: 'Days Until Expiry', accessor: (r) => r.days_until_expiry },
+          { header: 'Unit Cost (LKR)', accessor: (r) => r.cost_price_cents, isMoneyCents: true },
+          { header: 'Valuation at Cost (LKR)', accessor: (r) => r.valuation_at_cost_cents, isMoneyCents: true },
+        ];
+        downloadCsv('expiry_watch_30d', rows, cols);
+        break;
+      }
+      case 'supplier_balances': {
+        const rows = reportData as SupplierBalanceRow[];
+        const cols: CsvColumn<SupplierBalanceRow>[] = [
+          { header: 'Supplier Name', accessor: (r) => r.supplier_name },
+          { header: 'Contact Person', accessor: (r) => r.contact_person || '' },
+          { header: 'Phone', accessor: (r) => r.phone || '' },
+          { header: 'Outstanding Balance (LKR)', accessor: (r) => r.balance_cents, isMoneyCents: true },
+          { header: 'Last Purchase Date', accessor: (r) => r.last_purchase_date || '' },
+        ];
+        downloadCsv('supplier_balances', rows, cols);
+        break;
+      }
+      case 'top_customers': {
+        const rows = reportData as TopCustomerRow[];
+        const cols: CsvColumn<TopCustomerRow>[] = [
+          { header: 'Customer Name', accessor: (r) => r.name },
+          { header: 'Phone', accessor: (r) => r.phone },
+          { header: 'Bill Count', accessor: (r) => r.bill_count },
+          { header: 'Total Spend (LKR)', accessor: (r) => r.total_spent_cents, isMoneyCents: true },
+          { header: 'Loyalty Points', accessor: (r) => r.points_balance },
+        ];
+        downloadCsv(`top_customers_${fromDate}_${toDate}`, rows, cols);
+        break;
+      }
+      case 'sms_report': {
+        const rows = reportData as SmsReportRow[];
+        const cols: CsvColumn<SmsReportRow>[] = [
+          { header: 'Date', accessor: (r) => r.report_date },
+          { header: 'Total SMS', accessor: (r) => r.total_sms },
+          { header: 'Sent', accessor: (r) => r.sent_count },
+          { header: 'Failed', accessor: (r) => r.failed_count },
+          { header: 'Pending', accessor: (r) => r.pending_count },
+        ];
+        downloadCsv(`sms_report_${fromDate}_${toDate}`, rows, cols);
+        break;
+      }
       default:
         alert('CSV Export prepared for this report table.');
     }
+  };
+
+  const ChartTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white p-3 rounded-xl shadow-overlay border border-slate-700/60 text-xs space-y-1.5 min-w-[150px]">
+          <p className="font-semibold text-slate-300 border-b border-slate-800 pb-1">{label}</p>
+          {payload.map((item: any, idx: number) => {
+            const isLkr = typeof item.value === 'number' && item.dataKey !== 'bills';
+            return (
+              <div key={idx} className="flex items-center justify-between gap-3">
+                <span className="text-slate-400">{item.name || item.dataKey}:</span>
+                <span className="font-bold text-white font-mono">
+                  {isLkr ? `Rs. ${item.value.toLocaleString()}` : item.value}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -398,7 +485,7 @@ export const ReportsPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                leftIcon={<Printer className="w-4 h-4 text-slate-600" />}
+                leftIcon={<Printer className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
                 onClick={handlePrintPdf}
                 disabled={isLoading}
               >
@@ -527,11 +614,11 @@ export const ReportsPage: React.FC = () => {
 
       {/* Main Report View Area */}
       {isLoading ? (
-        <div className="p-16 text-center text-slate-500 font-mono text-sm bg-white rounded-2xl border border-slate-200">
+        <div className="p-16 text-center text-slate-500 dark:text-slate-400 font-mono text-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle">
           Aggregating SQL analytical data across Colombo timezone bounds...
         </div>
       ) : error ? (
-        <div className="p-6 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-medium">
+        <div className="p-6 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300 rounded-2xl text-xs font-medium">
           Report Error: {error instanceof Error ? error.message : String(error)}
         </div>
       ) : (
@@ -541,8 +628,8 @@ export const ReportsPage: React.FC = () => {
             <div className="space-y-6">
               {/* Daily Trend Chart */}
               {Array.isArray(reportData) && reportData.length > 1 && (
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Daily Revenue Trend (LKR)
                   </h4>
                   <div className="h-64 w-full">
@@ -554,18 +641,17 @@ export const ReportsPage: React.FC = () => {
                           bills: r.bill_count,
                         }))}
                       >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
-                        <YAxis stroke="#94a3b8" fontSize={11} />
-                        <Tooltip
-                          formatter={(val: number) => [`Rs. ${val.toLocaleString()}`, 'Net Revenue']}
-                        />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-slate-800" />
+                        <XAxis dataKey="date" stroke="currentColor" className="text-slate-400 dark:text-slate-500" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="currentColor" className="text-slate-400 dark:text-slate-500" fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip content={<ChartTooltip />} />
                         <Line
                           type="monotone"
                           dataKey="revenue"
+                          name="Net Revenue"
                           stroke="#059669"
                           strokeWidth={2.5}
-                          dot={{ r: 3 }}
+                          dot={{ r: 3, fill: '#059669' }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -574,10 +660,10 @@ export const ReportsPage: React.FC = () => {
               )}
 
               {/* Daily Summary Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                       <tr>
                         <th className="py-3 px-3.5">Date</th>
                         <th className="py-3 px-3 text-right">Bills</th>
@@ -592,49 +678,49 @@ export const ReportsPage: React.FC = () => {
                         <th className="py-3 px-3.5 text-right">Other</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                       {(reportData as DailySummaryRow[]).map((row) => (
-                        <tr key={row.report_date} className="hover:bg-slate-50/80">
-                          <td className="py-2.5 px-3.5 font-bold font-mono text-slate-900">
+                        <tr key={row.report_date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-2.5 px-3.5 font-bold font-mono text-slate-900 dark:text-white">
                             {row.report_date}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                             {row.bill_count}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-700">
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
                             {formatLKR(row.gross_sales_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-amber-600">
+                          <td className="py-2.5 px-3 text-right font-mono text-amber-600 dark:text-amber-400">
                             {formatLKR(row.item_discounts_cents + row.bill_discounts_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                             {formatLKR(row.tax_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
                             {formatLKR(row.net_sales_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-rose-600">
+                          <td className="py-2.5 px-3 text-right font-mono text-rose-600 dark:text-rose-400">
                             {formatLKR(row.returns_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700">
+                          <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400">
                             {formatLKR(row.final_net_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                             {formatLKR(row.cash_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                             {formatLKR(row.card_cents)}
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono text-slate-600">
+                          <td className="py-2.5 px-3.5 text-right font-mono text-slate-600 dark:text-slate-400">
                             {formatLKR(row.bank_transfer_cents + row.store_credit_cents)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     {/* Totals Row */}
-                    <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-xs">
+                    <tfoot className="bg-slate-50 dark:bg-slate-800/80 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200">
                       <tr>
-                        <td className="py-3 px-3.5 uppercase tracking-wider text-slate-800">
+                        <td className="py-3 px-3.5 uppercase tracking-wider text-slate-800 dark:text-slate-200">
                           Totals
                         </td>
                         <td className="py-3 px-3 text-right font-mono">
@@ -648,7 +734,7 @@ export const ReportsPage: React.FC = () => {
                             )
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-amber-700">
+                        <td className="py-3 px-3 text-right font-mono text-amber-700 dark:text-amber-400">
                           {formatLKR(
                             (reportData as DailySummaryRow[]).reduce(
                               (s, r) =>
@@ -675,7 +761,7 @@ export const ReportsPage: React.FC = () => {
                             )
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-rose-700">
+                        <td className="py-3 px-3 text-right font-mono text-rose-700 dark:text-rose-400">
                           {formatLKR(
                             (reportData as DailySummaryRow[]).reduce(
                               (s, r) => s + BigInt(r.returns_cents),
@@ -683,7 +769,7 @@ export const ReportsPage: React.FC = () => {
                             )
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-black text-emerald-800">
+                        <td className="py-3 px-3 text-right font-mono font-black text-emerald-800 dark:text-emerald-300">
                           {formatLKR(
                             (reportData as DailySummaryRow[]).reduce(
                               (s, r) => s + BigInt(r.final_net_cents),
@@ -733,46 +819,46 @@ export const ReportsPage: React.FC = () => {
                 const p = reportData as ProfitReportRow;
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Net Revenue
                       </div>
-                      <div className="text-xl font-black text-slate-900 font-mono">
+                      <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
                         {formatLKR(p.revenue_cents)}
                       </div>
-                      <p className="text-[11px] text-slate-400">Total bill items value</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">Total bill items value</p>
                     </div>
 
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Cost of Goods (COGS)
                       </div>
-                      <div className="text-xl font-black text-slate-700 font-mono">
+                      <div className="text-xl font-black text-slate-700 dark:text-slate-300 font-mono">
                         {formatLKR(p.cost_of_goods_cents)}
                       </div>
-                      <p className="text-[11px] text-slate-400">Historical line snapshot cost</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">Historical line snapshot cost</p>
                     </div>
 
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Gross Profit
                       </div>
-                      <div className="text-xl font-black text-emerald-600 font-mono">
+                      <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                         {formatLKR(p.gross_profit_cents)}
                       </div>
-                      <p className="text-[11px] text-emerald-700 font-semibold">
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
                         Margin: {p.margin_percent}%
                       </p>
                     </div>
 
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Net Profit (After Returns)
                       </div>
-                      <div className="text-xl font-black text-purple-700 font-mono">
+                      <div className="text-xl font-black text-purple-700 dark:text-purple-400 font-mono">
                         {formatLKR(p.net_profit_cents)}
                       </div>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">
                         Returns: -{formatLKR(p.returns_total_cents)}
                       </p>
                     </div>
@@ -784,10 +870,10 @@ export const ReportsPage: React.FC = () => {
 
           {/* 3. PRODUCT SALES REPORT */}
           {activeReport === 'sales_by_product' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                     <tr>
                       <th className="py-3 px-3.5">Product</th>
                       <th className="py-3 px-3">SKU</th>
@@ -799,29 +885,29 @@ export const ReportsPage: React.FC = () => {
                       <th className="py-3 px-3.5 text-right font-black">Margin %</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {(reportData as ProductSalesRow[]).map((row) => (
-                      <tr key={row.product_id} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                      <tr key={row.product_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
                           {row.product_name}
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-500 text-[11px]">
+                        <td className="py-2.5 px-3 font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                           {row.sku}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-600">{row.category_name}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-semibold">
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.category_name}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
                           {row.quantity_sold}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
                           {formatLKR(row.revenue_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-500">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-500 dark:text-slate-400">
                           {formatLKR(row.cost_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
                           {formatLKR(row.profit_cents)}
                         </td>
-                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-slate-900">
+                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-slate-900 dark:text-white">
                           {row.margin_percent}%
                         </td>
                       </tr>
@@ -836,8 +922,8 @@ export const ReportsPage: React.FC = () => {
           {activeReport === 'sales_by_category' && (
             <div className="space-y-6">
               {Array.isArray(reportData) && reportData.length > 0 && (
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Category Revenue Distribution
                   </h4>
                   <div className="h-64 w-full">
@@ -849,22 +935,22 @@ export const ReportsPage: React.FC = () => {
                           profit: Number(r.profit_cents) / 100,
                         }))}
                       >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-                        <YAxis stroke="#94a3b8" fontSize={11} />
-                        <Tooltip formatter={(val: number) => [`Rs. ${val.toLocaleString()}`]} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-slate-800" />
+                        <XAxis dataKey="name" stroke="currentColor" className="text-slate-400 dark:text-slate-500" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="currentColor" className="text-slate-400 dark:text-slate-500" fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip content={<ChartTooltip />} />
                         <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenue" />
                         <Bar dataKey="profit" fill="#6366f1" radius={[4, 4, 0, 0]} name="Profit" />
-                        <Legend />
+                        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
               )}
 
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                     <tr>
                       <th className="py-3 px-3.5">Category</th>
                       <th className="py-3 px-3 text-right">Units Sold</th>
@@ -874,25 +960,25 @@ export const ReportsPage: React.FC = () => {
                       <th className="py-3 px-3.5 text-right font-black">Margin %</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {(reportData as CategorySalesRow[]).map((row) => (
-                      <tr key={row.category_id} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                      <tr key={row.category_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
                           {row.category_name}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-semibold">
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
                           {row.quantity_sold}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
                           {formatLKR(row.revenue_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-500">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-500 dark:text-slate-400">
                           {formatLKR(row.cost_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
                           {formatLKR(row.profit_cents)}
                         </td>
-                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-slate-900">
+                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-slate-900 dark:text-white">
                           {row.margin_percent}%
                         </td>
                       </tr>
@@ -906,8 +992,8 @@ export const ReportsPage: React.FC = () => {
           {/* 5. HOURLY PEAK SALES REPORT */}
           {activeReport === 'sales_by_hour' && (
             <div className="space-y-6">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Peak Transaction Hours (Asia/Colombo Local Time)
                 </h4>
                 <div className="h-64 w-full">
@@ -919,37 +1005,77 @@ export const ReportsPage: React.FC = () => {
                         bills: r.bill_count,
                       }))}
                     >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="hour" stroke="#94a3b8" fontSize={10} />
-                      <YAxis stroke="#94a3b8" fontSize={11} />
-                      <Tooltip formatter={(val: number) => [`Rs. ${val.toLocaleString()}`]} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-slate-800" />
+                      <XAxis dataKey="hour" stroke="currentColor" className="text-slate-400 dark:text-slate-500" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="currentColor" className="text-slate-400 dark:text-slate-500" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip content={<ChartTooltip />} />
                       <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Sales (LKR)" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                     <tr>
                       <th className="py-3 px-3.5">Hour of Day</th>
                       <th className="py-3 px-3 text-right">Bills Ringed</th>
                       <th className="py-3 px-3.5 text-right font-bold">Revenue</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {(reportData as HourlySalesRow[]).map((row) => (
-                      <tr key={row.hour_of_day} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 px-3.5 font-bold font-mono text-slate-900">
+                      <tr key={row.hour_of_day} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold font-mono text-slate-900 dark:text-white">
                           {String(row.hour_of_day).padStart(2, '0')}:00 -{' '}
                           {String(row.hour_of_day).padStart(2, '0')}:59
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-700">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
                           {row.bill_count}
                         </td>
-                        <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-900">
+                        <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-900 dark:text-white">
                           {formatLKR(row.revenue_cents)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 5b. SALES BY CASHIER REPORT */}
+          {activeReport === 'sales_by_cashier' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-3 px-3.5">Cashier Name</th>
+                      <th className="py-3 px-3 text-right">Bills Ringed</th>
+                      <th className="py-3 px-3 text-right font-bold">Revenue</th>
+                      <th className="py-3 px-3 text-right">Discounts Given</th>
+                      <th className="py-3 px-3.5 text-right font-bold text-rose-600 dark:text-rose-400">Returns Handled</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                    {(reportData as CashierSalesRow[]).map((row) => (
+                      <tr key={row.cashier_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
+                          {row.cashier_name}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                          {row.bill_count}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                          {formatLKR(row.revenue_cents)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-amber-600 dark:text-amber-400">
+                          {formatLKR(row.discounts_cents)}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                          {formatLKR(row.returns_cents)}
                         </td>
                       </tr>
                     ))}
@@ -961,10 +1087,10 @@ export const ReportsPage: React.FC = () => {
 
           {/* 6. STOCK VALUATION REPORT */}
           {activeReport === 'stock_valuation' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                     <tr>
                       <th className="py-3 px-3.5">Product</th>
                       <th className="py-3 px-3">SKU</th>
@@ -977,44 +1103,44 @@ export const ReportsPage: React.FC = () => {
                       <th className="py-3 px-3.5 text-right font-black">Potential Profit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {(reportData as StockValuationRow[]).map((row) => (
-                      <tr key={row.product_id} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                      <tr key={row.product_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
                           {row.product_name}
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-500 text-[11px]">
+                        <td className="py-2.5 px-3 font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                           {row.sku}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-600">{row.category_name}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold">
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.category_name}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
                           {row.stock_qty}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                           {formatLKR(row.cost_price_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                           {formatLKR(row.selling_price_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900 dark:text-white">
                           {formatLKR(row.valuation_at_cost_cents)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-blue-700">
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">
                           {formatLKR(row.valuation_at_selling_cents)}
                         </td>
-                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-emerald-700">
+                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-emerald-700 dark:text-emerald-400">
                           {formatLKR(row.potential_profit_cents)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   {/* Totals Row */}
-                  <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-xs">
+                  <tfoot className="bg-slate-50 dark:bg-slate-800/80 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200">
                     <tr>
-                      <td colSpan={6} className="py-3 px-3.5 uppercase tracking-wider text-slate-800">
+                      <td colSpan={6} className="py-3 px-3.5 uppercase tracking-wider text-slate-800 dark:text-slate-200">
                         Total Stock Holding Valuation
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900">
+                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white">
                         {formatLKR(
                           (reportData as StockValuationRow[]).reduce(
                             (s, r) => s + BigInt(r.valuation_at_cost_cents),
@@ -1022,7 +1148,7 @@ export const ReportsPage: React.FC = () => {
                           )
                         )}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-blue-800">
+                      <td className="py-3 px-3 text-right font-mono font-black text-blue-800 dark:text-blue-400">
                         {formatLKR(
                           (reportData as StockValuationRow[]).reduce(
                             (s, r) => s + BigInt(r.valuation_at_selling_cents),
@@ -1030,7 +1156,7 @@ export const ReportsPage: React.FC = () => {
                           )
                         )}
                       </td>
-                      <td className="py-3 px-3.5 text-right font-mono font-black text-emerald-800">
+                      <td className="py-3 px-3.5 text-right font-mono font-black text-emerald-800 dark:text-emerald-300">
                         {formatLKR(
                           (reportData as StockValuationRow[]).reduce(
                             (s, r) => s + BigInt(r.potential_profit_cents),
@@ -1047,35 +1173,35 @@ export const ReportsPage: React.FC = () => {
 
           {/* 7. LOW STOCK REORDER REPORT */}
           {activeReport === 'low_stock' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-3.5">Product</th>
                     <th className="py-3 px-3">SKU</th>
                     <th className="py-3 px-3">Category</th>
                     <th className="py-3 px-3 text-right">Current Stock</th>
                     <th className="py-3 px-3 text-right">Reorder Level</th>
-                    <th className="py-3 px-3 text-right font-bold text-rose-700">Shortfall</th>
+                    <th className="py-3 px-3 text-right font-bold text-rose-700 dark:text-rose-400">Shortfall</th>
                     <th className="py-3 px-3.5 text-right">Unit Cost</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {(reportData as LowStockRow[]).map((row) => (
-                    <tr key={row.product_id} className="hover:bg-slate-50/80">
-                      <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.product_name}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-500 text-[11px]">{row.sku}</td>
-                      <td className="py-2.5 px-3 text-slate-600">{row.category_name}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600">
+                    <tr key={row.product_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">{row.product_name}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-500 dark:text-slate-400 text-[11px]">{row.sku}</td>
+                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.category_name}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
                         {row.stock_qty}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-700">
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
                         {row.reorder_level}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-rose-700">
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-rose-700 dark:text-rose-400">
                         {row.shortfall_qty}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono text-slate-600">
+                      <td className="py-2.5 px-3.5 text-right font-mono text-slate-600 dark:text-slate-400">
                         {formatLKR(row.cost_price_cents)}
                       </td>
                     </tr>
@@ -1085,11 +1211,109 @@ export const ReportsPage: React.FC = () => {
             </div>
           )}
 
+          {/* 7b. DEAD STOCK REPORT */}
+          {activeReport === 'dead_stock' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-3 px-3.5">Product</th>
+                      <th className="py-3 px-3">SKU</th>
+                      <th className="py-3 px-3">Category</th>
+                      <th className="py-3 px-3 text-right">Stock Qty</th>
+                      <th className="py-3 px-3 text-right font-bold text-amber-600 dark:text-amber-400">Days Idle</th>
+                      <th className="py-3 px-3 text-right">Last Sold</th>
+                      <th className="py-3 px-3.5 text-right font-black text-rose-700 dark:text-rose-400">Capital Tied Up</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                    {(reportData as DeadStockRow[]).map((row) => (
+                      <tr key={row.product_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
+                          {row.product_name}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-500 dark:text-slate-400 text-[11px]">
+                          {row.sku}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.category_name}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                          {row.stock_qty}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                          {row.days_since_last_sale}d
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-500 dark:text-slate-400">
+                          {row.last_sold_at ? new Date(row.last_sold_at).toLocaleDateString() : 'Never'}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-rose-700 dark:text-rose-400">
+                          {formatLKR(row.valuation_at_cost_cents)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 7c. EXPIRY WATCH REPORT */}
+          {activeReport === 'expiry_watch' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-3 px-3.5">Product</th>
+                      <th className="py-3 px-3">SKU</th>
+                      <th className="py-3 px-3">Batch</th>
+                      <th className="py-3 px-3">Expiry Date</th>
+                      <th className="py-3 px-3 text-right">Remaining Qty</th>
+                      <th className="py-3 px-3 text-right font-bold text-rose-600 dark:text-rose-400">Days to Expiry</th>
+                      <th className="py-3 px-3 text-right">Unit Cost</th>
+                      <th className="py-3 px-3.5 text-right font-black text-rose-700 dark:text-rose-400">At-Risk Value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                    {(reportData as ExpiryRow[]).map((row) => (
+                      <tr key={row.batch_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
+                          {row.product_name}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-500 dark:text-slate-400 text-[11px]">
+                          {row.sku}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300">
+                          {row.batch_no}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300">
+                          {row.expiry_date}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                          {row.qty_remaining}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                          {row.days_until_expiry}d
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
+                          {formatLKR(row.cost_price_cents)}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-right font-mono font-black text-rose-700 dark:text-rose-400">
+                          {formatLKR(row.valuation_at_cost_cents)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* 8. TAX REPORT */}
           {activeReport === 'tax_report' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-3.5">Date</th>
                     <th className="py-3 px-3 text-right">Taxable Sales</th>
@@ -1098,22 +1322,22 @@ export const ReportsPage: React.FC = () => {
                     <th className="py-3 px-3.5 text-right">Effective Rate %</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {(reportData as TaxReportRow[]).map((row) => (
-                    <tr key={row.report_date} className="hover:bg-slate-50/80">
-                      <td className="py-2.5 px-3.5 font-mono font-bold text-slate-900">
+                    <tr key={row.report_date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-3.5 font-mono font-bold text-slate-900 dark:text-white">
                         {row.report_date}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800 dark:text-slate-200">
                         {formatLKR(row.taxable_sales_cents)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                         {formatLKR(row.tax_exempt_sales_cents)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
                         {formatLKR(row.tax_collected_cents)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-700">
+                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
                         {row.effective_tax_rate}%
                       </td>
                     </tr>
@@ -1125,9 +1349,9 @@ export const ReportsPage: React.FC = () => {
 
           {/* 9. RETURNS & VOIDS AUDIT REPORT */}
           {activeReport === 'returns_voids' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-3.5">Event</th>
                     <th className="py-3 px-3">Reference No</th>
@@ -1138,9 +1362,9 @@ export const ReportsPage: React.FC = () => {
                     <th className="py-3 px-3.5 text-right">Date/Time</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {(reportData as ReturnVoidRow[]).map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
+                    <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-2.5 px-3.5 font-bold">
                         <Badge
                           variant={row.event_type === 'void' ? 'danger' : 'purple'}
@@ -1149,18 +1373,18 @@ export const ReportsPage: React.FC = () => {
                           {row.event_type.toUpperCase()}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-900 dark:text-white">
                         {row.event_no}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">#{row.bill_no}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-700">
+                      <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-400">#{row.bill_no}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-700 dark:text-rose-400">
                         {formatLKR(row.amount_cents)}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-700 max-w-xs truncate">{row.reason}</td>
-                      <td className="py-2.5 px-3 text-slate-900 font-medium">
+                      <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300 max-w-xs truncate">{row.reason}</td>
+                      <td className="py-2.5 px-3 text-slate-900 dark:text-white font-medium">
                         {row.created_by_name}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono text-slate-500 text-[11px]">
+                      <td className="py-2.5 px-3.5 text-right font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                         {new Date(row.created_at).toLocaleString()}
                       </td>
                     </tr>
@@ -1172,29 +1396,29 @@ export const ReportsPage: React.FC = () => {
 
           {/* 10. SUPPLIER BALANCES REPORT */}
           {activeReport === 'supplier_balances' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-3.5">Supplier Name</th>
                     <th className="py-3 px-3">Contact</th>
                     <th className="py-3 px-3">Phone</th>
-                    <th className="py-3 px-3 text-right font-bold text-rose-700">Outstanding Balance</th>
+                    <th className="py-3 px-3 text-right font-bold text-rose-700 dark:text-rose-400">Outstanding Balance</th>
                     <th className="py-3 px-3.5 text-right">Last Purchase</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {(reportData as SupplierBalanceRow[]).map((row) => (
-                    <tr key={row.supplier_id} className="hover:bg-slate-50/80">
-                      <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                    <tr key={row.supplier_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
                         {row.supplier_name}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-600">{row.contact_person || '—'}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">{row.phone || '—'}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-rose-700">
+                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.contact_person || '—'}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-400">{row.phone || '—'}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-rose-700 dark:text-rose-400">
                         {formatLKR(row.balance_cents)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono text-slate-500">
+                      <td className="py-2.5 px-3.5 text-right font-mono text-slate-500 dark:text-slate-400">
                         {row.last_purchase_date
                           ? new Date(row.last_purchase_date).toLocaleDateString()
                           : '—'}
@@ -1208,29 +1432,29 @@ export const ReportsPage: React.FC = () => {
 
           {/* 11. TOP CUSTOMERS LEADERBOARD */}
           {activeReport === 'top_customers' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-3.5">Customer Name</th>
                     <th className="py-3 px-3">Phone</th>
                     <th className="py-3 px-3 text-right">Bill Count</th>
-                    <th className="py-3 px-3 text-right font-bold text-emerald-700">Total Spend</th>
-                    <th className="py-3 px-3.5 text-right font-bold text-purple-700">Loyalty Points</th>
+                    <th className="py-3 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400">Total Spend</th>
+                    <th className="py-3 px-3.5 text-right font-bold text-purple-700 dark:text-purple-400">Loyalty Points</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {(reportData as TopCustomerRow[]).map((row) => (
-                    <tr key={row.customer_id} className="hover:bg-slate-50/80">
-                      <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">{row.phone}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-700">
+                    <tr key={row.customer_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">{row.name}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-400">{row.phone}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
                         {row.bill_count}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
                         {formatLKR(row.total_spent_cents)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-purple-700">
+                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-purple-700 dark:text-purple-400">
                         {row.points_balance} pts
                       </td>
                     </tr>
@@ -1240,41 +1464,81 @@ export const ReportsPage: React.FC = () => {
             </div>
           )}
 
+          {/* 11b. SMS OUTBOX REPORT */}
+          {activeReport === 'sms_report' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-3 px-3.5">Date</th>
+                      <th className="py-3 px-3 text-right">Total SMS</th>
+                      <th className="py-3 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400">Delivered / Sent</th>
+                      <th className="py-3 px-3 text-right font-bold text-rose-700 dark:text-rose-400">Failed</th>
+                      <th className="py-3 px-3.5 text-right font-bold text-amber-600 dark:text-amber-400">Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                    {(reportData as SmsReportRow[]).map((row) => (
+                      <tr key={row.report_date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3.5 font-mono font-bold text-slate-900 dark:text-white">
+                          {row.report_date}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                          {row.total_sms}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                          {row.sent_count}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-700 dark:text-rose-400">
+                          {row.failed_count}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                          {row.pending_count}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* 12. AUTOMATED BILL ACCURACY AUDIT PANEL */}
           {activeReport === 'accuracy_audit' && reportData && (
             <div className="space-y-6">
               {/* Status Header Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Audit Status</span>
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Audit Status</span>
                   <div className="mt-2 flex items-center space-x-2">
                     <Badge variant={(reportData as BillAuditResult).status === 'passed' ? 'success' : 'danger'}>
                       {(reportData as BillAuditResult).status === 'passed' ? '100% ACCURATE' : 'DISCREPANCY DETECTED'}
                     </Badge>
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     Range: {(reportData as BillAuditResult).from_date} to {(reportData as BillAuditResult).to_date}
                   </p>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Bills Verified</span>
-                  <div className="mt-2 text-2xl font-black text-slate-900">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Bills Verified</span>
+                  <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
                     {(reportData as BillAuditResult).total_bills_audited}
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     Recomputed from immutable line snapshots
                   </p>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Discrepancies</span>
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Discrepancies</span>
                   <div className={`mt-2 text-2xl font-black ${
-                    (reportData as BillAuditResult).discrepancy_count === 0 ? 'text-emerald-600' : 'text-rose-600'
+                    (reportData as BillAuditResult).discrepancy_count === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                   }`}>
                     {(reportData as BillAuditResult).discrepancy_count}
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     {(reportData as BillAuditResult).discrepancy_count === 0 ? 'Zero mathematical drift detected' : 'Requires review'}
                   </p>
                 </div>
@@ -1282,29 +1546,29 @@ export const ReportsPage: React.FC = () => {
 
               {/* Zero-discrepancy celebration or Discrepancy Table */}
               {(reportData as BillAuditResult).discrepancy_count === 0 ? (
-                <div className="p-8 bg-emerald-50/60 border border-emerald-200 rounded-2xl text-center space-y-2">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                  <h4 className="text-base font-bold text-emerald-950">
+                <div className="p-8 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                  <h4 className="text-base font-bold text-emerald-950 dark:text-emerald-200">
                     All {(reportData as BillAuditResult).total_bills_audited} Bills Verified with 100% Mathematical Accuracy
                   </h4>
-                  <p className="text-xs text-emerald-800 max-w-xl mx-auto">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 max-w-xl mx-auto">
                     Every bill in this period was completely recomputed from individual line items, quantities,
                     tax rates, and proportional bill discount allocations. Every line total matches the bill total to the cent,
                     and all payment amounts match net bill totals.
                   </p>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-rose-200 shadow-2xs overflow-hidden">
-                  <div className="p-4 bg-rose-50/80 border-b border-rose-100 flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-950">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-subtle overflow-hidden">
+                  <div className="p-4 bg-rose-50/80 dark:bg-rose-950/40 border-b border-rose-100 dark:border-rose-900/50 flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-950 dark:text-rose-200">
                       Discrepant Bills List
                     </h4>
-                    <span className="text-xs text-rose-700">
+                    <span className="text-xs text-rose-700 dark:text-rose-400">
                       {(reportData as BillAuditResult).discrepancy_count} items
                     </span>
                   </div>
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">
                       <tr>
                         <th className="py-3 px-3.5">Bill Number</th>
                         <th className="py-3 px-3">Date</th>
@@ -1313,20 +1577,20 @@ export const ReportsPage: React.FC = () => {
                         <th className="py-3 px-3.5">Audit Issues</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                       {(reportData as BillAuditResult).discrepancies.map((disc) => (
-                        <tr key={disc.bill_id} className="hover:bg-slate-50/80">
-                          <td className="py-2.5 px-3.5 font-bold font-mono text-slate-900">{disc.bill_no}</td>
-                          <td className="py-2.5 px-3 font-mono text-slate-600">
+                        <tr key={disc.bill_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-2.5 px-3.5 font-bold font-mono text-slate-900 dark:text-white">{disc.bill_no}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-400">
                             {new Date(disc.created_at).toLocaleDateString()}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-rose-700">
+                          <td className="py-2.5 px-3 text-right font-mono text-rose-700 dark:text-rose-400">
                             {formatLKR(disc.stored_total_cents)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-900">
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-900 dark:text-white">
                             {formatLKR(disc.calculated_total_cents)}
                           </td>
-                          <td className="py-2.5 px-3.5 text-xs text-rose-600 font-mono">
+                          <td className="py-2.5 px-3.5 text-xs text-rose-600 dark:text-rose-400 font-mono">
                             {disc.issues.join('; ')}
                           </td>
                         </tr>
@@ -1343,9 +1607,9 @@ export const ReportsPage: React.FC = () => {
       {/* Daily Summary Thermal Slip Modal */}
       {thermalSlipOpen && activeReport === 'daily_summary' && Array.isArray(reportData) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-6">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <h3 className="text-sm font-bold text-slate-900">Thermal Daily Summary Slip</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-6">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Thermal Daily Summary Slip</h3>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="primary"
@@ -1365,7 +1629,7 @@ export const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-6 bg-slate-50 flex justify-center">
+            <div className="p-6 bg-slate-100 dark:bg-slate-950 flex justify-center">
               <DailySummarySlip
                 rows={reportData as DailySummaryRow[]}
                 dateRangeLabel={rangeLabel}
