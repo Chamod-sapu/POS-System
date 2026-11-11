@@ -122,7 +122,7 @@ CREATE OR REPLACE FUNCTION receive_purchase(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid;
@@ -148,6 +148,9 @@ BEGIN
   END IF;
 
   v_user_id := auth.uid();
+
+  -- Enable stock write permission for this transaction
+  PERFORM set_config('app.stock_write', 'on', true);
 
   -- 2. Validate Supplier
   SELECT balance_cents INTO v_supplier_balance
@@ -433,7 +436,7 @@ CREATE OR REPLACE FUNCTION record_supplier_payment(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid;
@@ -535,7 +538,7 @@ CREATE OR REPLACE FUNCTION cancel_purchase(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid;
@@ -553,6 +556,9 @@ BEGIN
   END IF;
 
   v_user_id := auth.uid();
+
+  -- Enable stock write permission for this transaction
+  PERFORM set_config('app.stock_write', 'on', true);
 
   -- Lock purchase
   SELECT * INTO v_purchase

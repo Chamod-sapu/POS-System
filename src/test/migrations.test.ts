@@ -26,6 +26,7 @@ describe('Postgres Schema Migrations', () => {
       '015_reports.sql',
       '016_hardening.sql',
       '017_bill_audit.sql',
+      '018_fix_receive_purchase_stock_write.sql',
     ];
 
     for (const file of files) {
@@ -276,6 +277,16 @@ describe('Postgres Schema Migrations', () => {
     expect(content).toContain('trg_audit_categories');
     expect(content).toContain('trg_audit_customers');
     expect(content).toContain('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon');
+    expect(content).toContain('SET search_path = public, pg_temp');
+  });
+
+  it('checks 018_fix_receive_purchase_stock_write.sql redefines receive_purchase and cancel_purchase with app.stock_write permission', () => {
+    const content = fs.readFileSync(path.join(migrationsDir, '018_fix_receive_purchase_stock_write.sql'), 'utf8');
+    expect(content).toContain('CREATE OR REPLACE FUNCTION receive_purchase');
+    expect(content).toContain('CREATE OR REPLACE FUNCTION cancel_purchase');
+    expect(content).toContain("PERFORM set_config('app.stock_write', 'on', true);");
+    expect(content).toContain('GRANT EXECUTE ON FUNCTION receive_purchase TO authenticated');
+    expect(content).toContain('GRANT EXECUTE ON FUNCTION cancel_purchase TO authenticated');
     expect(content).toContain('SET search_path = public, pg_temp');
   });
 
