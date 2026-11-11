@@ -231,15 +231,16 @@ export const AppLayout: React.FC = () => {
 
   // Group sections
   const sections = Array.from(new Set(allowedNavItems.map((i) => i.section)));
+  const isPosRoute = location.pathname === '/pos';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased">
+    <div className="h-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased">
       {/* -------------------------------------------------------------------- */}
       {/* 1. SLIM PREMIUM TOP BAR                                             */}
       {/* -------------------------------------------------------------------- */}
       <header
         data-app-chrome="true"
-        className="sticky top-0 z-30 h-14 sm:h-16 bg-slate-900 text-white border-b border-slate-800 shadow-subtle flex items-center justify-between px-3 sm:px-6"
+        className="flex-shrink-0 z-30 h-14 sm:h-16 bg-slate-900 text-white border-b border-slate-800 shadow-subtle flex items-center justify-between px-3 sm:px-6"
       >
         {/* Left: Mobile Drawer Trigger & Store Branding */}
         <div className="flex items-center space-x-3">
@@ -456,13 +457,13 @@ export const AppLayout: React.FC = () => {
       {/* -------------------------------------------------------------------- */}
       {/* 2. BODY: COLLAPSIBLE SIDEBAR + MAIN CONTENT                          */}
       {/* -------------------------------------------------------------------- */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Desktop Collapsible Sidebar */}
         <aside
           data-app-chrome="true"
           className={`hidden lg:flex lg:flex-col ${
             isSidebarCollapsed ? 'w-20' : 'w-64'
-          } bg-slate-900 border-r border-slate-800 flex-shrink-0 transition-subtle duration-200`}
+          } bg-slate-900 border-r border-slate-800 flex-shrink-0 h-full overflow-hidden transition-subtle duration-200`}
         >
           {/* Grouped Navigation Links */}
           <div className="flex-1 py-4 px-3 space-y-6 overflow-y-auto">
@@ -551,8 +552,12 @@ export const AppLayout: React.FC = () => {
         </aside>
 
         {/* Main Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 mb-16 lg:mb-0 transition-subtle">
-          <div className="max-w-7xl mx-auto">
+        <main
+          className={`flex-1 min-h-0 overflow-y-auto ${
+            isPosRoute ? 'p-0' : 'p-3 sm:p-5 lg:p-6'
+          } mb-16 lg:mb-0 transition-subtle`}
+        >
+          <div className={isPosRoute ? 'h-full w-full' : 'max-w-7xl mx-auto'}>
             <Outlet />
           </div>
         </main>
