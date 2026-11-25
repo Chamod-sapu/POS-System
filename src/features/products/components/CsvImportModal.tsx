@@ -91,6 +91,15 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const MAX_CSV_BYTES = 5 * 1024 * 1024;
+    const MAX_CSV_DATA_ROWS = 1000;
+    if (file.size > MAX_CSV_BYTES) {
+      setImportError('CSV file exceeds maximum size limit of 5 MB.');
+      setParsedRows([]);
+      e.target.value = '';
+      return;
+    }
+
     setFileName(file.name);
     setImportError(null);
 
@@ -100,6 +109,11 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
       if (!text) return;
 
       const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+      if (lines.length - 1 > MAX_CSV_DATA_ROWS) {
+        setImportError(`CSV import is capped at ${MAX_CSV_DATA_ROWS} rows per batch.`);
+        setParsedRows([]);
+        return;
+      }
       if (lines.length < 2) {
         setImportError('CSV file must have a header row and at least one data row.');
         setParsedRows([]);

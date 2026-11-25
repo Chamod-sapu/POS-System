@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, sanitizePostgrestFilter } from '../../../lib/supabase';
 import { Database, Json } from '../../../types/database';
 
 export type MovementType = Database['public']['Enums']['movement_type'];
@@ -89,7 +89,8 @@ export interface AdjustSearchProduct {
 export async function searchProducts(queryText: string): Promise<AdjustSearchProduct[]> {
   if (!queryText.trim()) return [];
 
-  const clean = queryText.trim();
+  const clean = sanitizePostgrestFilter(queryText);
+  if (!clean) return [];
   const { data, error } = await supabase
     .from('products')
     .select('id, sku, barcode, name, unit, allow_decimal_qty, stock_qty, selling_price_cents')

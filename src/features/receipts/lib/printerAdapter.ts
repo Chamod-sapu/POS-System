@@ -261,7 +261,7 @@ export class BrowserPrintAdapter implements PrinterAdapter {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Receipt - ${bill.bill_no}</title>
+          <title>Receipt - ${escapeHtml(bill.bill_no)}</title>
           <style>
             @page {
               size: ${paperWidth} auto;

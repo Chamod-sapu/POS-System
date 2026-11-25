@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, sanitizePostgrestFilter } from '../../../lib/supabase';
 import {
   POSProduct,
   CartItem,
@@ -35,7 +35,8 @@ export async function fetchPOSProducts(): Promise<POSProduct[]> {
 export async function searchPOSProducts(query: string): Promise<POSProduct[]> {
   if (!query || !query.trim()) return [];
 
-  const clean = query.trim();
+  const clean = sanitizePostgrestFilter(query);
+  if (!clean) return [];
   const { data, error } = await supabase
     .from('pos_products')
     .select('*')
@@ -60,10 +61,12 @@ export async function lookupCustomerByPhone(phone: string): Promise<CustomerLook
   }
 
   // Search by exact match or normalized suffix match
+  const safePhone = sanitizePostgrestFilter(clean);
+  if (!safePhone || safePhone.length < 9) return { exists: false };
   const { data, error } = await supabase
     .from('customers')
     .select('id, name, phone, sms_opt_out, points_balance')
-    .or(`phone.eq.${clean},phone.ilike.%${clean.slice(-9)}%`)
+    .or(`phone.eq.${safePhone},phone.ilike.%${safePhone.slice(-9)}%`)
     .maybeSingle();
 
   if (error || !data) {

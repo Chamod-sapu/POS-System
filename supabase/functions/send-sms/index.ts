@@ -15,18 +15,35 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "http://localhost:5173";
+const allowLocalhost = Deno.env.get("ALLOW_LOCALHOST_CORS") === "true";
 
 function getCorsHeaders(req: Request) {
   const reqOrigin = req.headers.get("Origin") || req.headers.get("origin") || "";
-  const origin = (reqOrigin === allowedOrigin || reqOrigin.startsWith("http://localhost:"))
-    ? reqOrigin
-    : allowedOrigin;
+  const origin =
+    reqOrigin === allowedOrigin || (allowLocalhost && reqOrigin.startsWith("http://localhost:"))
+      ? reqOrigin
+      : allowedOrigin;
 
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sms-secret",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
+}
+
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [hashA, hashB] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const bytesA = new Uint8Array(hashA);
+  const bytesB = new Uint8Array(hashB);
+  let diff = 0;
+  for (let i = 0; i < bytesA.length; i++) {
+    diff |= bytesA[i] ^ bytesB[i];
+  }
+  return diff === 0;
 }
 
 /**
@@ -102,6 +119,7 @@ export class NotifyLkProvider implements SmsProvider {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const resJson = await response.json().catch(() => ({}));
@@ -146,6 +164,7 @@ export class DialogEsmsProvider implements SmsProvider {
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const resJson = await response.json().catch(() => ({}));
@@ -188,6 +207,7 @@ export class MobitelBulkProvider implements SmsProvider {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const resJson = await response.json().catch(() => ({}));
@@ -224,6 +244,7 @@ export class GenericRestProvider implements SmsProvider {
         message,
         sender_id: senderId,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const resJson = await response.json().catch(() => ({}));
@@ -301,12 +322,12 @@ serve(async (req: Request) => {
     let isStaffRetry = false;
     let targetOutboxId: string | null = null;
 
-    // Check (a): Shared Secret from pg_net trigger or pg_cron
-    if (triggerSecret && secretHeader && secretHeader === triggerSecret) {
+    // Check (a): Shared Secret from pg_net trigger or pg_cron (constant-time compare)
+    if (triggerSecret && secretHeader && (await timingSafeEqual(secretHeader, triggerSecret))) {
       isAuthorized = true;
     }
 
-    // Check (b): Authenticated Staff JWT with valid role
+    // Check (b): Authenticated Manager/Owner JWT for single-row SMS retries
     if (!isAuthorized && authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
       const { data: { user }, error: authErr } = await adminClient.auth.getUser(token);
@@ -318,7 +339,7 @@ serve(async (req: Request) => {
           .eq("id", user.id)
           .single();
 
-        if (profile && profile.is_active && (profile.role === "owner" || profile.role === "manager" || profile.role === "cashier")) {
+        if (profile && profile.is_active && (profile.role === "owner" || profile.role === "manager")) {
           isAuthorized = true;
           isStaffRetry = true;
         }
@@ -354,11 +375,18 @@ serve(async (req: Request) => {
     // 2. DISPATCH PROCESSING
     // -------------------------------------------------------------------------
 
-    // CASE A: Targeted single-row retry requested by staff
-    if (isStaffRetry && targetOutboxId) {
+    // CASE A: Targeted single-row retry requested by manager/owner
+    if (isStaffRetry) {
+      if (!targetOutboxId) {
+        return new Response(
+          JSON.stringify({ error: "BAD_REQUEST", message: "outbox_id is required for staff retries" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const { data: row, error: fetchErr } = await adminClient
         .from("sms_outbox")
-        .select("id, phone, message, attempts")
+        .select("id, phone, message, attempts, status")
         .eq("id", targetOutboxId)
         .single();
 
@@ -366,6 +394,27 @@ serve(async (req: Request) => {
         return new Response(
           JSON.stringify({ error: "NOT_FOUND", message: "Specified SMS record does not exist" }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (row.status === "sent") {
+        return new Response(
+          JSON.stringify({ error: "ALREADY_SENT", message: "SMS record was already sent" }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (row.status === "sending") {
+        return new Response(
+          JSON.stringify({ error: "IN_PROGRESS", message: "SMS record is already being sent" }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if ((row.attempts ?? 0) >= 5) {
+        return new Response(
+          JSON.stringify({ error: "MAX_ATTEMPTS", message: "Maximum SMS retry limit (5) reached" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 

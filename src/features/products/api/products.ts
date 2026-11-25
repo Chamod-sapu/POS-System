@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, sanitizePostgrestFilter } from '../../../lib/supabase';
 import { Database, Json, ProductUnit } from '../../../types/database';
 import {
   ProductWithCategory,
@@ -49,8 +49,10 @@ export async function fetchProducts(
 
   // 2. Search query (SKU, barcode, or name)
   if (filters.search && filters.search.trim()) {
-    const s = filters.search.trim();
-    query = query.or(`name.ilike.%${s}%,sku.ilike.%${s}%,barcode.ilike.%${s}%`);
+    const s = sanitizePostgrestFilter(filters.search);
+    if (s) {
+      query = query.or(`name.ilike.%${s}%,sku.ilike.%${s}%,barcode.ilike.%${s}%`);
+    }
   }
 
   // 3. Category filter

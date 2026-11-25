@@ -1,10 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Store, Eye, EyeOff, Lock, Mail, AlertTriangle, ShieldCheck, Zap, Receipt, Sun, Moon } from 'lucide-react';
 import { signInWithEmail } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../../../lib/theme';
 import { useShopSettings } from '../../settings/hooks/useShopSettings';
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: {
+          sitekey: string;
+          callback: (token: string) => void;
+          'expired-callback'?: () => void;
+          'error-callback'?: () => void;
+        }
+      ) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 60;
@@ -24,7 +42,11 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const isCaptchaEnabled = import.meta.env.VITE_ENABLE_CAPTCHA === 'true';
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+  const showDemoCreds = import.meta.env.DEV && import.meta.env.VITE_SHOW_DEMO_CREDS === 'true';
   const [captchaToken, setCaptchaToken] = useState<string | null>(isCaptchaEnabled ? null : 'bypass');
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
     const saved = localStorage.getItem(ATTEMPTS_STORAGE_KEY);
     return saved ? parseInt(saved, 10) : 0;
@@ -35,6 +57,59 @@ export const LoginPage: React.FC = () => {
     const diff = Math.ceil((parseInt(lockoutUntil, 10) - Date.now()) / 1000);
     return diff > 0 ? diff : 0;
   });
+
+  // Load and mount real Cloudflare Turnstile widget when enabled and configured
+  useEffect(() => {
+    if (!isCaptchaEnabled || !turnstileSiteKey || !turnstileContainerRef.current) {
+      return;
+    }
+
+    const renderWidget = () => {
+      if (!window.turnstile || !turnstileContainerRef.current) return;
+      if (turnstileWidgetIdRef.current) {
+        try {
+          window.turnstile.remove(turnstileWidgetIdRef.current);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+        sitekey: turnstileSiteKey,
+        callback: (token: string) => setCaptchaToken(token),
+        'expired-callback': () => setCaptchaToken(null),
+        'error-callback': () => setCaptchaToken(null),
+      });
+    };
+
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        'script[src^="https://challenges.cloudflare.com/turnstile/v0/api.js"]'
+      );
+      if (existingScript) {
+        existingScript.addEventListener('load', renderWidget, { once: true });
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.onload = renderWidget;
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      if (turnstileWidgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.remove(turnstileWidgetIdRef.current);
+        } catch {
+          // Ignore cleanup errors
+        }
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [isCaptchaEnabled, turnstileSiteKey]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -340,18 +415,13 @@ export const LoginPage: React.FC = () => {
                     <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Bot Protection (Turnstile)
                   </span>
                 </div>
-                <div className="flex items-center gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <input
-                    type="checkbox"
-                    id="captcha-check"
-                    checked={!!captchaToken && captchaToken !== 'bypass'}
-                    onChange={(e) => setCaptchaToken(e.target.checked ? `cf-token-${Date.now()}` : null)}
-                    className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 bg-white dark:bg-slate-900"
-                  />
-                  <label htmlFor="captcha-check" className="text-xs text-slate-700 dark:text-slate-200 select-none cursor-pointer font-medium">
-                    Verify human operator
-                  </label>
-                </div>
+                {turnstileSiteKey ? (
+                  <div ref={turnstileContainerRef} className="min-h-[65px] flex items-center justify-center" />
+                ) : (
+                  <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                    CAPTCHA is enabled, but VITE_TURNSTILE_SITE_KEY is not configured.
+                  </p>
+                )}
               </div>
             )}
 
@@ -375,44 +445,46 @@ export const LoginPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 text-center">
-              Quick Test Credentials
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('owner@wewala.lk');
-                  setPassword('Password123!');
-                }}
-                className="px-2 py-1.5 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/80 rounded-lg text-xs font-semibold transition-subtle text-center cursor-pointer"
-              >
-                Owner
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('manager@wewala.lk');
-                  setPassword('Password123!');
-                }}
-                className="px-2 py-1.5 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80 rounded-lg text-xs font-semibold transition-subtle text-center cursor-pointer"
-              >
-                Manager
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('cashier@wewala.lk');
-                  setPassword('Password123!');
-                }}
-                className="px-2 py-1.5 bg-brand-50 dark:bg-brand-950/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-brand-800 dark:text-brand-300 border border-brand-200 dark:border-brand-800/80 rounded-lg text-xs font-semibold transition-subtle text-center cursor-pointer"
-              >
-                Cashier
-              </button>
+          {/* Quick Demo Credentials (strictly opt-in local dev only; stripped from production builds) */}
+          {showDemoCreds && (
+            <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 text-center">
+                Quick Test Credentials
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('owner@wewala.lk');
+                    setPassword(import.meta.env.VITE_DEMO_PASSWORD || '');
+                  }}
+                  className="px-2 py-1.5 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/80 rounded-lg text-xs font-semibold transition-subtle text-center cursor-pointer"
+                >
+                  Owner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('manager@wewala.lk');
+                    setPassword(import.meta.env.VITE_DEMO_PASSWORD || '');
+                  }}
+                  className="px-2 py-1.5 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80 rounded-lg text-xs font-semibold transition-subtle text-center cursor-pointer"
+                >
+                  Manager
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('cashier@wewala.lk');
+                    setPassword(import.meta.env.VITE_DEMO_PASSWORD || '');
+                  }}
+                  className="px-2 py-1.5 bg-brand-50 dark:bg-brand-950/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-brand-800 dark:text-brand-300 border border-brand-200 dark:border-brand-800/80 rounded-lg text-xs font-semibold transition-subtle text-center cursor-pointer"
+                >
+                  Cashier
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Legal Footer */}

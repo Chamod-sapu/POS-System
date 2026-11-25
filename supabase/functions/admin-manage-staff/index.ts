@@ -15,12 +15,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "http://localhost:5173";
+const allowLocalhost = Deno.env.get("ALLOW_LOCALHOST_CORS") === "true";
 
 function getCorsHeaders(req: Request) {
   const reqOrigin = req.headers.get("Origin") || req.headers.get("origin") || "";
-  const origin = (reqOrigin === allowedOrigin || reqOrigin.startsWith("http://localhost:"))
-    ? reqOrigin
-    : allowedOrigin;
+  const origin =
+    reqOrigin === allowedOrigin || (allowLocalhost && reqOrigin.startsWith("http://localhost:"))
+      ? reqOrigin
+      : allowedOrigin;
 
   return {
     "Access-Control-Allow-Origin": origin,
@@ -114,30 +116,34 @@ serve(async (req: Request) => {
       );
     }
 
-    // Require AAL2 (MFA) for owner management operations
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const jwtToken = authHeader.replace(/^Bearer\s+/i, "");
+    // Require AAL2 (MFA) strictly for owner management operations (fail-closed)
+    const jwtToken = (authHeader ?? "").replace(/^Bearer\s+/i, "");
+    let isAal2 = false;
     if (jwtToken && jwtToken.includes(".")) {
       try {
-        const payload = JSON.parse(atob(jwtToken.split(".")[1]));
-        if (payload.aal && payload.aal !== "aal2") {
-          return new Response(
-            JSON.stringify({
-              error: "MFA_REQUIRED",
-              message: "Owner administrative actions require Multi-Factor Authentication (AAL2).",
-            }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        const b64 = jwtToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+        const payload = JSON.parse(atob(padded));
+        isAal2 = payload?.aal === "aal2";
       } catch {
-        // Allow pass-through if mocked token in testing harness
+        isAal2 = false;
       }
     }
+    if (!isAal2) {
+      return new Response(
+        JSON.stringify({
+          error: "MFA_REQUIRED",
+          message: "Owner administrative actions require Multi-Factor Authentication (AAL2).",
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Extract client IP for audit logging
+    // Extract client IP for audit logging (prefer verified edge headers over client-controlled XFF)
     const clientIp =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("cf-connecting-ip")?.trim() ||
+      req.headers.get("x-real-ip")?.trim() ||
+      req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ||
       "unknown";
 
     // Helper: log to audit_log

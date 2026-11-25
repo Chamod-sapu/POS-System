@@ -28,7 +28,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const IDLE_LOCK_STORAGE_KEY = 'wewala_pos_idle_locked_uid';
+  const [isLocked, setIsLocked] = useState<boolean>(() => {
+    try {
+      return Boolean(localStorage.getItem('wewala_pos_idle_locked_uid'));
+    } catch {
+      return false;
+    }
+  });
 
   // MFA State
   const [aal, setAal] = useState<'aal1' | 'aal2'>('aal1');
@@ -42,6 +49,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
 
   const lockApp = useCallback(() => {
     if (user) {
+      try {
+        localStorage.setItem(IDLE_LOCK_STORAGE_KEY, user.id);
+      } catch {
+        // Ignore storage errors
+      }
       setIsLocked(true);
     }
   }, [user]);
@@ -57,6 +69,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         return { success: false, error: 'Incorrect password. Please try again.' };
       }
 
+      try {
+        localStorage.removeItem(IDLE_LOCK_STORAGE_KEY);
+      } catch {
+        // Ignore storage errors
+      }
       setIsLocked(false);
       lastActivityRef.current = Date.now();
       return { success: true };
@@ -73,6 +90,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
 
     if (!p.is_active) {
       await signOutUser();
+      try {
+        localStorage.removeItem(IDLE_LOCK_STORAGE_KEY);
+      } catch {
+        // Ignore storage errors
+      }
       setUser(null);
       setProfile(null);
       setIsLocked(false);
@@ -164,6 +186,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   }, [refreshMfaState]);
 
   const signOut = useCallback(async () => {
+    try {
+      localStorage.removeItem(IDLE_LOCK_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
+    }
     setIsLocked(false);
     setUser(null);
     setProfile(null);
@@ -214,6 +241,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT' || !session) {
+        try {
+          localStorage.removeItem(IDLE_LOCK_STORAGE_KEY);
+        } catch {
+          // Ignore storage errors
+        }
         setUser(null);
         setProfile(null);
         setIsLocked(false);
@@ -221,6 +253,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         if (session.user) {
           setUser({ id: session.user.id, email: session.user.email });
+          try {
+            if (localStorage.getItem(IDLE_LOCK_STORAGE_KEY) === session.user.id) {
+              setIsLocked(true);
+            }
+          } catch {
+            // Ignore storage errors
+          }
           const p = await loadUserProfile(session.user.id);
           if (p) {
             await refreshMfaState(p.role as UserRole);
@@ -282,6 +321,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         clearTimeout(idleTimerRef.current);
       }
       idleTimerRef.current = setTimeout(() => {
+        try {
+          if (user?.id) {
+            localStorage.setItem(IDLE_LOCK_STORAGE_KEY, user.id);
+          }
+        } catch {
+          // Ignore storage errors
+        }
         setIsLocked(true);
       }, idleTimeoutMs);
     };

@@ -15,6 +15,12 @@ if [ -z "${SUPABASE_DIRECT_DB_URL:-}" ]; then
   exit 1
 fi
 
+if [ ! -f "$PASSPHRASE_FILE" ]; then
+  echo "Error: Passphrase file $PASSPHRASE_FILE not found. Refusing unencrypted backup." >&2
+  exit 1
+fi
+
+trap 'rm -f "$DUMP_FILE"' EXIT
 mkdir -p "$BACKUP_DIR"
 
 echo "[$TIMESTAMP] Starting database pg_dump..."
@@ -24,19 +30,15 @@ pg_dump "$SUPABASE_DIRECT_DB_URL" \
   --no-acl \
   --file="$DUMP_FILE"
 
-if [ -f "$PASSPHRASE_FILE" ]; then
-  echo "Encrypting dump with GPG AES-256..."
-  gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-file "$PASSPHRASE_FILE" -o "$ENC_FILE" "$DUMP_FILE"
-  rm -f "$DUMP_FILE"
-  FINAL_FILE="$ENC_FILE"
-else
-  echo "Warning: Passphrase file not found, keeping unencrypted dump."
-  FINAL_FILE="$DUMP_FILE"
-fi
+echo "Encrypting dump with GPG AES-256..."
+gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-file "$PASSPHRASE_FILE" -o "$ENC_FILE" "$DUMP_FILE"
+rm -f "$DUMP_FILE"
+chmod 600 "$ENC_FILE"
+FINAL_FILE="$ENC_FILE"
 
 if command -v aws &> /dev/null; then
-  echo "Syncing backup to off-site cloud storage..."
-  aws s3 cp "$FINAL_FILE" s3://wewala-pos-secure-backups/database/
+  echo "Syncing encrypted backup to off-site cloud storage..."
+  aws s3 cp "$FINAL_FILE" s3://wewala-pos-secure-backups/database/ --sse AES256
 fi
 
 # Retention cleanup

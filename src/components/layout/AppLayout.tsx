@@ -57,7 +57,7 @@ interface NavItem {
 }
 
 export const AppLayout: React.FC = () => {
-  const { user, profile, role, lockApp, signOut, needsMfaEnrollment, needsMfaChallenge } = useAuth();
+  const { user, profile, role, isLocked, lockApp, signOut, needsMfaEnrollment, needsMfaChallenge } = useAuth();
   const { shopName, settings } = useShopSettings();
   const { shift, isOpen: isShiftOpen, refetch: refetchShift } = useCurrentShift();
   const { isOnline } = useOnlineStatus();
@@ -558,7 +558,7 @@ export const AppLayout: React.FC = () => {
           } mb-16 lg:mb-0 transition-subtle`}
         >
           <div className={isPosRoute ? 'h-full w-full' : 'max-w-7xl mx-auto'}>
-            <Outlet />
+            {!needsMfaEnrollment && !needsMfaChallenge && !isLocked ? <Outlet /> : null}
           </div>
         </main>
       </div>

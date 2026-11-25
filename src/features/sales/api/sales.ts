@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, sanitizePostgrestFilter } from '../../../lib/supabase';
 import { Bill } from '../../receipts/types';
 
 export interface SalesFilterParams {
@@ -65,11 +65,13 @@ export async function fetchSales(
 
   // Search filter (Bill number or customer phone)
   if (search && search.trim().length > 0) {
-    const term = search.trim();
-    if (term.startsWith('WWL-')) {
-      query = query.ilike('bill_no', `%${term}%`);
-    } else {
-      query = query.or(`bill_no.ilike.%${term}%,customer_phone.ilike.%${term}%`);
+    const term = sanitizePostgrestFilter(search);
+    if (term) {
+      if (term.startsWith('WWL-')) {
+        query = query.ilike('bill_no', `%${term}%`);
+      } else {
+        query = query.or(`bill_no.ilike.%${term}%,customer_phone.ilike.%${term}%`);
+      }
     }
   }
 

@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Lock, Eye, EyeOff, LogOut, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
+const MAX_UNLOCK_ATTEMPTS = 5;
+const UNLOCK_LOCKOUT_MS = 5 * 60 * 1000;
+
 export const IdleLock: React.FC = () => {
   const { isLocked, user, profile, unlockApp, signOut } = useAuth();
   const [password, setPassword] = useState('');
@@ -9,12 +12,38 @@ export const IdleLock: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const attemptsKey = user ? `wewala_unlock_attempts_${user.id}` : 'wewala_unlock_attempts';
+  const lockoutKey = user ? `wewala_unlock_lockout_${user.id}` : 'wewala_unlock_lockout';
+
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    try {
+      return Number(sessionStorage.getItem(attemptsKey) || '0');
+    } catch {
+      return 0;
+    }
+  });
+  const [lockoutUntil, setLockoutUntil] = useState<number>(() => {
+    try {
+      return Number(sessionStorage.getItem(lockoutKey) || '0');
+    } catch {
+      return 0;
+    }
+  });
+
   if (!isLocked || !user) {
     return null;
   }
 
+  const isLockedOut = lockoutUntil > Date.now();
+
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutUntil > Date.now()) {
+      const mins = Math.max(1, Math.ceil((lockoutUntil - Date.now()) / 60000));
+      setError(`Too many failed unlock attempts. Try again in ${mins} minute(s) or sign out.`);
+      return;
+    }
+
     if (!password) {
       setError('Please enter your password to unlock');
       return;
@@ -27,13 +56,45 @@ export const IdleLock: React.FC = () => {
     setIsSubmitting(false);
 
     if (!result.success) {
-      setError(result.error || 'Incorrect password. Please try again.');
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      try {
+        sessionStorage.setItem(attemptsKey, String(nextAttempts));
+      } catch {
+        // Ignore storage errors
+      }
+      if (nextAttempts >= MAX_UNLOCK_ATTEMPTS) {
+        const until = Date.now() + UNLOCK_LOCKOUT_MS;
+        setLockoutUntil(until);
+        try {
+          sessionStorage.setItem(lockoutKey, String(until));
+        } catch {
+          // Ignore storage errors
+        }
+        setError('Too many failed unlock attempts. Terminal unlock locked for 5 minutes — please sign out.');
+      } else {
+        setError(result.error || 'Incorrect password. Please try again.');
+      }
     } else {
       setPassword('');
+      setFailedAttempts(0);
+      setLockoutUntil(0);
+      try {
+        sessionStorage.removeItem(attemptsKey);
+        sessionStorage.removeItem(lockoutKey);
+      } catch {
+        // Ignore storage errors
+      }
     }
   };
 
   const handleSignOut = async () => {
+    try {
+      sessionStorage.removeItem(attemptsKey);
+      sessionStorage.removeItem(lockoutKey);
+    } catch {
+      // Ignore storage errors
+    }
     await signOut();
   };
 
@@ -112,7 +173,7 @@ export const IdleLock: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLockedOut}
             className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-lg px-4 py-3 text-base shadow-sm hover:shadow transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 flex items-center justify-center"
           >
             {isSubmitting ? (

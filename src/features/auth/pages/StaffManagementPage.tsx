@@ -33,6 +33,7 @@ import { Select } from '../../../components/ui/Select';
 import { Badge } from '../../../components/ui/Badge';
 import { Avatar } from '../../../components/ui/Avatar';
 import { DataTable, Column } from '../../../components/ui/DataTable';
+import { mapErrorMessage } from '../../../lib/errors';
 
 export const StaffManagementPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -418,7 +419,7 @@ export const StaffManagementPage: React.FC = () => {
           <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl text-rose-800 dark:text-rose-200 text-xs font-medium flex items-center justify-between shadow-subtle">
             <div className="flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />
-              <span>Error loading staff: {(queryError as Error).message}</span>
+              <span>Error loading staff: {mapErrorMessage(queryError)}</span>
             </div>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Retry

@@ -1502,6 +1502,21 @@ export interface Database {
         Args: Record<PropertyKey, never>;
         Returns: Json;
       };
+      log_bill_integrity_error: {
+        Args: {
+          p_sale_id: string;
+          p_bill_no: string;
+          p_error: string;
+        };
+        Returns: undefined;
+      };
+      log_data_export_audit: {
+        Args: {
+          p_export_type: string;
+          p_record_count: number;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       user_role: UserRole;

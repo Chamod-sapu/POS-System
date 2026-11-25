@@ -138,22 +138,19 @@ export async function createStaffMember(input: CreateStaffInput): Promise<StaffM
 
 /**
  * Update staff role - owner only.
- * Directly updates profiles table with PostgreSQL RLS enforcement.
+ * Invokes admin-manage-staff so role changes revoke active JWTs immediately and enforce AAL2.
  */
 export async function updateStaffRole(input: SetRoleInput): Promise<void> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ role: input.new_role })
-    .eq('id', input.user_id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await invokeStaffFunction<{ success: boolean }>({
+    action: 'set_role',
+    user_id: input.user_id,
+    new_role: input.new_role,
+  });
 }
 
 /**
  * Deactivate a staff account - owner only.
- * Directly updates profiles table with PostgreSQL RLS enforcement.
+ * Invokes admin-manage-staff so deactivated accounts have all sessions globally revoked.
  */
 export async function deactivateStaffMember(userId: string): Promise<void> {
   const {
@@ -164,29 +161,21 @@ export async function deactivateStaffMember(userId: string): Promise<void> {
     throw new Error('You cannot deactivate your own account.');
   }
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_active: false })
-    .eq('id', userId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await invokeStaffFunction<{ success: boolean }>({
+    action: 'deactivate',
+    user_id: userId,
+  });
 }
 
 /**
  * Reactivate a staff account - owner only.
- * Directly updates profiles table with PostgreSQL RLS enforcement.
+ * Invokes admin-manage-staff with AAL2 enforcement.
  */
 export async function reactivateStaffMember(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_active: true })
-    .eq('id', userId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await invokeStaffFunction<{ success: boolean }>({
+    action: 'reactivate',
+    user_id: userId,
+  });
 }
 
 /**

@@ -31,6 +31,7 @@ import { printBill, getPrinterAdapter } from '../../receipts/lib/printerAdapter'
 import { createTestBill } from '../../receipts/lib/testBill';
 import { PaperWidth, PrinterAdapterType } from '../../receipts/types';
 import { analyzeSmsText, renderSmsTemplate } from '../../sms/lib/gsm';
+import { mapErrorMessage } from '../../../lib/errors';
 
 export const SettingsPage: React.FC = () => {
   const { settings, isLoading, shopName } = useShopSettings();
@@ -58,13 +59,57 @@ export const SettingsPage: React.FC = () => {
     return localStorage.getItem('wewala_shop_logo') || null;
   });
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Logo file size must be less than 2MB.');
+
+    const ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+    const MAX_LOGO_BYTES = 512 * 1024; // 512 KB
+
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      alert('Invalid file type. Only PNG, JPEG, or WEBP logos are allowed.');
+      e.target.value = '';
       return;
     }
+
+    if (file.size > MAX_LOGO_BYTES) {
+      alert('Logo file size must be 512 KB or less.');
+      e.target.value = '';
+      return;
+    }
+
+    // Verify magic bytes so renamed SVGs or executables cannot masquerade as raster images
+    try {
+      const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      const isPng =
+        header.length >= 4 &&
+        header[0] === 0x89 &&
+        header[1] === 0x50 &&
+        header[2] === 0x4e &&
+        header[3] === 0x47;
+      const isJpeg = header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+      const isWebp =
+        header.length >= 12 &&
+        header[0] === 0x52 &&
+        header[1] === 0x49 &&
+        header[2] === 0x46 &&
+        header[3] === 0x46 &&
+        header[8] === 0x57 &&
+        header[9] === 0x45 &&
+        header[10] === 0x42 &&
+        header[11] === 0x50;
+
+      if (!isPng && !isJpeg && !isWebp) {
+        alert('Invalid or corrupted image file. Please select a valid PNG, JPEG, or WEBP image.');
+        e.target.value = '';
+        return;
+      }
+    } catch {
+      alert('Unable to inspect selected image file.');
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -126,24 +171,55 @@ export const SettingsPage: React.FC = () => {
       ] as const;
 
       const dateStr = new Date().toISOString().slice(0, 10);
+      const PAGE_SIZE = 1000;
+      const MAX_PAGES = 100;
+      let totalRecords = 0;
 
       for (const table of tables) {
         setExportProgress(`Exporting ${table}...`);
-        const { data, error } = await supabase.from(table).select('*').limit(10000);
-        if (error) {
-          console.warn(`Export failed for ${table}:`, error.message);
+        const allRows: Record<string, unknown>[] = [];
+        let page = 0;
+        let tableError: string | null = null;
+
+        while (page < MAX_PAGES) {
+          const from = page * PAGE_SIZE;
+          const to = from + PAGE_SIZE - 1;
+          const { data, error } = await supabase.from(table).select('*').range(from, to);
+          if (error) {
+            tableError = error.message;
+            break;
+          }
+          if (!data || data.length === 0) break;
+          allRows.push(...(data as unknown as Record<string, unknown>[]));
+          if (data.length < PAGE_SIZE) break;
+          page += 1;
+        }
+
+        if (tableError) {
+          console.warn(`Export failed for ${table}:`, tableError);
           continue;
         }
 
-        if (data && data.length > 0) {
-          const keys = Object.keys(data[0] || {});
+        if (allRows.length > 0) {
+          totalRecords += allRows.length;
+          const keys = Object.keys(allRows[0] || {});
           const headers = keys.map((k) => ({ key: k, label: k }));
-          exportToCsv(`wewala_${table}_${dateStr}`, headers, data as unknown as Record<string, unknown>[]);
+          exportToCsv(`wewala_${table}_${dateStr}`, headers, allRows);
         }
       }
-      setExportProgress('All 7 core tables exported successfully.');
+
+      try {
+        await supabase.rpc('log_data_export_audit', {
+          p_export_type: 'settings_full_export',
+          p_record_count: totalRecords,
+        });
+      } catch {
+        // Do not block export UX if audit RPC fails
+      }
+
+      setExportProgress(`All 7 core tables exported (${totalRecords} total records).`);
     } catch (err) {
-      alert('Data export failed: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Data export failed: ' + mapErrorMessage(err));
     } finally {
       setIsExportingAll(false);
     }
@@ -213,7 +289,7 @@ export const SettingsPage: React.FC = () => {
       setSaveSuccessMsg('Store settings saved successfully!');
       setTimeout(() => setSaveSuccessMsg(null), 4000);
     } catch (err) {
-      alert('Save failed: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Save failed: ' + mapErrorMessage(err));
     } finally {
       setIsSavingSettings(false);
     }
@@ -310,7 +386,7 @@ export const SettingsPage: React.FC = () => {
                                 <label className="cursor-pointer">
                                   <input
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/png,image/jpeg,image/webp"
                                     onChange={handleLogoUpload}
                                     disabled={!isOwner}
                                     className="sr-only"

@@ -26,9 +26,13 @@ export function generateCsvString<T>(
   data: T[],
   columns: CsvColumn<T>[]
 ): string {
-  const escapeCell = (val: string | number | null | undefined): string => {
+  const escapeCell = (val: string | number | null | undefined, allowNumeric = false): string => {
     if (val === null || val === undefined) return '';
-    const str = String(val);
+    let str = String(val);
+    const isPlainNumeric = allowNumeric && /^-?\d+(\.\d+)?$/.test(str);
+    if (!isPlainNumeric && /^[\s]*[=+\-@\t\r]/.test(str)) {
+      str = `'${str}`;
+    }
     if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
       return `"${str.replace(/"/g, '""')}"`;
     }
@@ -41,9 +45,9 @@ export function generateCsvString<T>(
       .map((col) => {
         const raw = col.accessor(row);
         if (col.isMoneyCents && (typeof raw === 'number' || typeof raw === 'bigint')) {
-          return escapeCell(centsToDecimalString(raw));
+          return escapeCell(centsToDecimalString(raw), true);
         }
-        return escapeCell(raw);
+        return escapeCell(raw, typeof raw === 'number');
       })
       .join(',')
   );

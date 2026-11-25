@@ -251,6 +251,33 @@ describe('Reports Feature & 20 Known Bills Invariants', () => {
       // Money must be formatted as 1250.50
       expect(csv).toContain('1250.50');
     });
+
+    it('neutralizes CSV spreadsheet formula injection payloads while preserving negative money cells', () => {
+      interface FormulaRow {
+        label: string;
+        amount: number;
+      }
+      const data: FormulaRow[] = [
+        { label: "=cmd|' /C calc'!A0", amount: -250 },
+        { label: '+1+1', amount: 100 },
+        { label: '-2+3', amount: 0 },
+        { label: '@SUM(1,2)', amount: 0 },
+        { label: '\t=HYPERLINK("http://evil.example")', amount: 0 },
+      ];
+      const cols: CsvColumn<FormulaRow>[] = [
+        { header: 'Item', accessor: (r) => r.label },
+        { header: 'Amount', accessor: (r) => r.amount, isMoneyCents: true },
+      ];
+
+      const csv = generateCsvString(data, cols);
+      expect(csv).toContain("'=cmd|' /C calc'!A0");
+      expect(csv).toContain("'+1+1");
+      expect(csv).toContain("'-2+3");
+      expect(csv).toContain("'@SUM(1,2)");
+      expect(csv).toContain("'\t=HYPERLINK");
+      // Negative money literal stays unquoted numeric so Excel sums work cleanly
+      expect(csv).toContain(',-2.50\r\n');
+    });
   });
 
   describe('Four-Way Ledger Reconciliation Engine', () => {

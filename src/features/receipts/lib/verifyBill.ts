@@ -146,21 +146,10 @@ export function verifyBill(bill: Bill): BillVerificationResult {
 export async function logBillIntegrityFailure(bill: Bill, error: string): Promise<void> {
   try {
     const logPromise = (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      await supabase.from('audit_log').insert({
-        user_id: user?.id ?? null,
-        action: 'bill.integrity_error',
-        table_name: 'sales',
-        record_id: bill.id,
-        new_data: {
-          bill_no: bill.bill_no,
-          error,
-          bill_id: bill.id,
-          timestamp: new Date().toISOString(),
-        },
+      await supabase.rpc('log_bill_integrity_error', {
+        p_sale_id: bill.id,
+        p_bill_no: bill.bill_no,
+        p_error: error.slice(0, 500),
       });
     })();
 

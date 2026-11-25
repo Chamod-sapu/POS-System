@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, sanitizePostgrestFilter } from '../../../lib/supabase';
 
 export type SmsStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'skipped';
 
@@ -64,8 +64,10 @@ export async function fetchSmsOutbox(
   }
 
   if (search && search.trim().length > 0) {
-    const term = search.trim();
-    query = query.or(`phone.ilike.%${term}%,message.ilike.%${term}%`);
+    const term = sanitizePostgrestFilter(search);
+    if (term) {
+      query = query.or(`phone.ilike.%${term}%,message.ilike.%${term}%`);
+    }
   }
 
   query = query.order('created_at', { ascending: false });

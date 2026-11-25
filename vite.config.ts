@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true,
+    host: process.env.VITE_DEV_HOST === 'true',
   },
   build: {
     sourcemap: false,

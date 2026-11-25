@@ -72,3 +72,14 @@ export const supabase: SupabaseClient<Database> = new Proxy({} as SupabaseClient
   },
 });
 
+/**
+ * Sanitizes search input interpolated into PostgREST `.or()` filter strings
+ * so commas, parentheses, backslashes, quotes, or wildcards cannot inject extra filter clauses.
+ */
+export function sanitizePostgrestFilter(input: string): string {
+  return input
+    .trim()
+    .replace(/[(),*%\\"'\r\n]/g, '')
+    .slice(0, 120);
+}
+

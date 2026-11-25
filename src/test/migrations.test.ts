@@ -27,6 +27,7 @@ describe('Postgres Schema Migrations', () => {
       '016_hardening.sql',
       '017_bill_audit.sql',
       '018_fix_receive_purchase_stock_write.sql',
+      '019_security_audit_remediation.sql',
     ];
 
     for (const file of files) {
@@ -288,6 +289,37 @@ describe('Postgres Schema Migrations', () => {
     expect(content).toContain('GRANT EXECUTE ON FUNCTION receive_purchase TO authenticated');
     expect(content).toContain('GRANT EXECUTE ON FUNCTION cancel_purchase TO authenticated');
     expect(content).toContain('SET search_path = public, pg_temp');
+  });
+
+  it('checks 019_security_audit_remediation.sql enforces database security remediations', () => {
+    const content = fs.readFileSync(path.join(migrationsDir, '019_security_audit_remediation.sql'), 'utf8');
+    expect(content).toContain('trg_protect_customer_balances');
+    expect(content).toContain('trg_prevent_last_owner_loss');
+    expect(content).toContain('DROP POLICY IF EXISTS "shop_settings_update_policy"');
+    expect(content).toContain('DROP POLICY IF EXISTS "profiles_update_policy"');
+    expect(content).toContain('REVOKE ALL ON FUNCTION public.claim_sms_batch');
+    expect(content).toContain('REVOKE ALL ON FUNCTION public.calc_bill');
+    expect(content).toContain('CREATE OR REPLACE FUNCTION public.log_bill_integrity_error');
+    expect(content).toContain('CREATE OR REPLACE FUNCTION public.log_data_export_audit');
+    expect(content).toContain('UNAUTHORIZED_PRIVILEGE_CONTEXT');
+    expect(content).toContain('SET search_path = public, pg_temp');
+  });
+
+  it('checks Edge Functions harden CORS, AAL2 fail-closed checks, and constant-time secret verification', () => {
+    const staffFn = fs.readFileSync(
+      path.resolve(__dirname, '../../supabase/functions/admin-manage-staff/index.ts'),
+      'utf8'
+    );
+    expect(staffFn).toContain('ALLOW_LOCALHOST_CORS');
+    expect(staffFn).toContain('if (!isAal2)');
+
+    const smsFn = fs.readFileSync(
+      path.resolve(__dirname, '../../supabase/functions/send-sms/index.ts'),
+      'utf8'
+    );
+    expect(smsFn).toContain('timingSafeEqual');
+    expect(smsFn).toContain('AbortSignal.timeout(10_000)');
+    expect(smsFn).toContain('ALLOW_LOCALHOST_CORS');
   });
 
   it('checks seed.sql contains shop settings, 6 categories, and 20 products with 2 weighed items', () => {

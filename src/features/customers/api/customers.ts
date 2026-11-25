@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, sanitizePostgrestFilter } from '../../../lib/supabase';
 import { Database } from '../../../types/database';
 
 export type Customer = Database['public']['Tables']['customers']['Row'];
@@ -67,8 +67,10 @@ export async function fetchCustomers(search?: string): Promise<Customer[]> {
   let query = supabase.from('customers').select('*');
 
   if (search && search.trim()) {
-    const term = search.trim();
-    query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`);
+    const term = sanitizePostgrestFilter(search);
+    if (term) {
+      query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`);
+    }
   }
 
   query = query.order('created_at', { ascending: false }).limit(100);
